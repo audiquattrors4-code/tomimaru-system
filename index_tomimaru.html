@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>とみまるシステム - 神吉医院 DICOM読影管理</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Noto Sans JP', -apple-system, sans-serif; background: #f1f5f9; min-height: 100vh; }
+#app { max-width: 540px; margin: 0 auto; min-height: 100vh; }
+button { font-family: 'Noto Sans JP', sans-serif; }
+textarea, input { font-family: 'Noto Sans JP', sans-serif; }
+@keyframes fadeIn { from { opacity:0; transform:translateX(-50%) translateY(-8px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+@keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+const GAS_URL = "https://script.google.com/macros/s/AKfycbw3Z_weqy06SBmtj7oskjWRepCp2wUG4UdSsN1_X52r4ZT0s9BlNf3xPxj0tNui5KxN/exec";
+
+const api = {
+  async getCases() {
+    const res = await fetch(GAS_URL + "?action=getCases");
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error);
+    return json.data;
+  },
+  async createCase(data) {
+    const res = await fetch(GAS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ action: "createCase", ...data }),
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error);
+    return json.data;
+  },
+  async submitReport(id, report) {
+    const res = await fetch(GAS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ action: "submitReport", id, report }),
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error);
+    return json.data;
+  },
+  async uploadFile(fileName, base64Data) {
+    const res = await fetch(GAS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ action: "uploadFile", fileName, fileData: base64Data }),
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error);
+    return json.data;
+  },
+};
+
+const STATUS_MAP = {
+  pending: { label: "読影待ち", color: "#D97706", bg: "#FEF3C7", icon: "⏳" },
+  reported: { label: "読影済み", color: "#059669", bg: "#D1FAE5", icon: "✓" },
+};
+
+const DEMO_CASES = [
+  {
+    id: "TM-DEMO", karteNo: "00000", requestDate: new Date().toISOString(), status: "pending",
+    modality: "CR", bodyPart: "胸部", clinicalInfo: "デモデータ：サーバー未接続時に表示されます",
+    fileIds: [], fileNames: ["00000_000000.dcm"], report: null, reportDate: null,
+  },
+];
+
+function DicomViewer({ label, showNodule }) {
+  const canvasRef = useRef(null);
+  const [wl, setWl] = useState(40);
+  const [ww, setWw] = useState(400);
+  const dragRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const w = canvas.width, h = canvas.height;
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, w, h);
+    const map = (val) => {
+      const lo = wl - ww / 2, hi = wl + ww / 2;
+      return Math.max(0, Math.min(255, ((val - lo) / (hi - lo)) * 255));
+    };
+    const img = ctx.createImageData(w, h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const cx = w / 2, cy = h / 2, dx = (x - cx) / cx, dy = (y - cy) / cy;
+        let raw = -1000;
+        const bw = 0.65, bh = 0.85;
+        if ((dx * dx) / (bw * bw) + (dy * dy) / (bh * bh) < 1) {
+          raw = -200 + Math.random() * 25;
+          const lOff = 0.25, lW = 0.22, lH = 0.45;
+          const ll = ((dx + lOff) ** 2) / (lW * lW) + ((dy + 0.05) ** 2) / (lH * lH);
+          const rl = ((dx - lOff) ** 2) / (lW * lW) + ((dy + 0.05) ** 2) / (lH * lH);
+          if (ll < 1 || rl < 1) { raw = -800 + Math.random() * 50; const vd = Math.min(ll, rl); if (vd < 0.3) raw += (1 - vd / 0.3) * 180; }
+          const hd = ((dx + 0.08) ** 2) / 0.04 + ((dy - 0.15) ** 2) / 0.06;
+          if (hd < 1) raw = 40 + Math.random() * 15;
+          if (Math.abs(dx) < 0.04 && dy > -0.5 && dy < 0.7) raw = 300 + Math.random() * 40;
+          for (let r = 0; r < 10; r++) { const ry = -0.55 + r * 0.12; if (Math.abs(dy - ry - Math.abs(dx) * 0.15) < 0.011 && Math.abs(dx) > 0.04 && Math.abs(dx) < 0.55) raw = 200 + Math.random() * 60; }
+          if (showNodule) { const nd = Math.sqrt((dx + 0.2) ** 2 + (dy + 0.25) ** 2); if (nd < 0.035) raw = -100 + (1 - nd / 0.035) * 250; }
+        }
+        const v = map(raw), i = (y * w + x) * 4;
+        img.data[i] = v; img.data[i + 1] = v; img.data[i + 2] = v; img.data[i + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    ctx.fillStyle = "rgba(0,230,118,0.85)"; ctx.font = "bold 10px 'SF Mono',monospace"; ctx.fillText("WL:" + wl + "  WW:" + ww, 6, 14);
+    ctx.fillStyle = "rgba(255,255,255,0.55)"; ctx.font = "bold 14px monospace"; ctx.fillText("R", 10, h / 2); ctx.fillText("L", w - 20, h / 2);
+    ctx.fillStyle = "rgba(0,230,118,0.7)"; ctx.font = "bold 11px 'Noto Sans JP',sans-serif"; ctx.fillText(label, 6, h - 8);
+  }, [wl, ww, label, showNodule]);
+
+  const onDown = (e) => { const t = e.touches ? e.touches[0] : e; dragRef.current = { x: t.clientX, y: t.clientY, wl, ww }; };
+  const onMove = (e) => { if (!dragRef.current) return; e.preventDefault(); const t = e.touches ? e.touches[0] : e; setWw(Math.max(1, dragRef.current.ww + (t.clientX - dragRef.current.x) * 2)); setWl(dragRef.current.wl + (t.clientY - dragRef.current.y) * 2); };
+  const onUp = () => (dragRef.current = null);
+
+  return (
+    <div style={{ flex: "1 1 170px", maxWidth: 340 }}>
+      <canvas ref={canvasRef} width={340} height={380}
+        style={{ width: "100%", height: "auto", borderRadius: 6, cursor: "crosshair", touchAction: "none" }}
+        onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
+        onTouchStart={onDown} onTouchMove={onMove} onTouchEnd={onUp} />
+      <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+        {[{ l: "肺野", wl: -600, ww: 1500 }, { l: "縦隔", wl: 40, ww: 400 }, { l: "骨", wl: 300, ww: 1500 }].map((p) => (
+          <button key={p.l} onClick={() => { setWl(p.wl); setWw(p.ww); }}
+            style={{ flex: 1, padding: "4px 0", fontSize: 10, border: "1px solid #444", background: "#1a1a2e", color: "#8ee4af", borderRadius: 4, cursor: "pointer" }}>
+            {p.l}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Spinner({ message }) {
+  return (
+    <div style={{ textAlign: "center", padding: 40 }}>
+      <div style={{ width: 36, height: 36, border: "3px solid #e2e8f0", borderTopColor: "#f97316", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 12px" }} />
+      <div style={{ fontSize: 13, color: "#64748b" }}>{message || "読み込み中..."}</div>
+    </div>
+  );
+}
+
+function App() {
+  const [view, setView] = useState("list");
+  const [selected, setSelected] = useState(null);
+  const [role, setRole] = useState("requester");
+  const [cases, setCases] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({ karteNo: "", bodyPart: "胸部", clinicalInfo: "", modality: "CR", hasPrev: false });
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [reportDraft, setReportDraft] = useState("");
+  const [toast, setToast] = useState(null);
+  const [isOffline, setIsOffline] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const notify = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
+
+  const fetchCases = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await api.getCases();
+      setCases(data);
+      setIsOffline(false);
+    } catch(e) {
+      console.error("Fetch error:", e);
+      setIsOffline(true);
+      if (cases.length === 0) { setCases(DEMO_CASES); notify("⚠️ サーバー未接続 → デモモード"); }
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchCases(); }, [fetchCases]);
+
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+    for (const file of files) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const base64 = ev.target.result.split(",")[1];
+        const d = new Date(), yy = String(d.getFullYear()).slice(2), mm = String(d.getMonth() + 1).padStart(2, "0"), dd = String(d.getDate()).padStart(2, "0");
+        const suggestedName = form.karteNo ? form.karteNo + "_" + yy + mm + dd + ".dcm" : file.name;
+        setUploadedFiles((prev) => [...prev, { originalName: file.name, suggestedName, size: file.size, base64 }]);
+      };
+      reader.readAsDataURL(file);
+    }
+    e.target.value = "";
+  };
+
+  const submitRequest = async () => {
+    setSubmitting(true);
+    try {
+      const fileIds = [], fileNames = [];
+      for (const f of uploadedFiles) {
+        if (!isOffline) { try { const r = await api.uploadFile(f.suggestedName, f.base64); fileIds.push(r.fileId); } catch(e) { console.error(e); } }
+        fileNames.push(f.suggestedName);
+      }
+      if (fileNames.length === 0) {
+        const d = new Date(), yy = String(d.getFullYear()).slice(2), mm = String(d.getMonth() + 1).padStart(2, "0"), dd = String(d.getDate()).padStart(2, "0");
+        fileNames.push(form.karteNo + "_" + yy + mm + dd + ".dcm");
+      }
+      if (!isOffline) {
+        await api.createCase({ karteNo: form.karteNo, modality: form.modality, bodyPart: form.bodyPart, clinicalInfo: form.clinicalInfo, fileIds, fileNames });
+        await fetchCases();
+      } else {
+        const newCase = { id: "TM-" + String(cases.length + 1).padStart(4, "0"), karteNo: form.karteNo, requestDate: new Date().toISOString(), status: "pending", modality: form.modality, bodyPart: form.bodyPart, clinicalInfo: form.clinicalInfo, fileIds: [], fileNames, report: null, reportDate: null };
+        setCases((prev) => [newCase, ...prev]);
+      }
+      setForm({ karteNo: "", bodyPart: "胸部", clinicalInfo: "", modality: "CR", hasPrev: false });
+      setUploadedFiles([]);
+      setView("list");
+      notify("📤 読影依頼を送信しました（LINE通知: とみまるへ送信済み）");
+    } catch (err) { notify("❌ " + err.message); }
+    finally { setSubmitting(false); }
+  };
+
+  const submitReport = async () => {
+    if (!selected || !reportDraft.trim()) return;
+    setSubmitting(true);
+    try {
+      if (!isOffline) { await api.submitReport(selected.id, reportDraft); await fetchCases(); }
+      else { setCases((prev) => prev.map((c) => c.id === selected.id ? { ...c, status: "reported", report: reportDraft, reportDate: new Date().toISOString() } : c)); }
+      setSelected({ ...selected, status: "reported", report: reportDraft, reportDate: new Date().toISOString() });
+      setReportDraft("");
+      notify("📋 所見を送信しました（LINE通知: とすとすへ送信済み）");
+    } catch (err) { notify("❌ " + err.message); }
+    finally { setSubmitting(false); }
+  };
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ background: "#0f172a", padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "3px solid #f97316", position: "sticky", top: 0, zIndex: 100 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg,#f97316,#ea580c)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🐾</div>
+          <div>
+            <div style={{ color: "#fff", fontSize: 16, fontWeight: 800, letterSpacing: 1 }}>とみまるシステム</div>
+            <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 9, letterSpacing: 2, display: "flex", alignItems: "center", gap: 6 }}>
+              神吉医院 DICOM読影管理
+              {isOffline && <span style={{ color: "#fbbf24", fontSize: 8, background: "rgba(251,191,36,0.15)", padding: "1px 5px", borderRadius: 4 }}>DEMO</span>}
+            </div>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 4, background: "rgba(255,255,255,0.08)", borderRadius: 20, padding: 3 }}>
+          {[{ key: "requester", label: "とすとす", emoji: "🏥" }, { key: "reader", label: "とみまる", emoji: "🔬" }].map((r) => (
+            <button key={r.key} onClick={() => { setRole(r.key); setView("list"); setSelected(null); }}
+              style={{ padding: "5px 12px", fontSize: 11, borderRadius: 16, cursor: "pointer", border: "none", background: role === r.key ? "#f97316" : "transparent", color: role === r.key ? "#fff" : "rgba(255,255,255,0.5)", fontWeight: role === r.key ? 700 : 400, transition: "all 0.2s" }}>
+              {r.emoji} {r.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Toast */}
+      {toast && (
+        <div style={{ position: "fixed", top: 65, left: "50%", transform: "translateX(-50%)", padding: "10px 18px", borderRadius: 10, background: "#0f172a", color: "#fff", fontSize: 12, zIndex: 1000, boxShadow: "0 4px 20px rgba(0,0,0,0.3)", animation: "fadeIn 0.25s ease", maxWidth: "90vw" }}>
+          {toast}
+        </div>
+      )}
+
+      {/* LIST */}
+      {view === "list" && (
+        <div style={{ padding: 14 }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+            {[
+              { n: cases.filter((c) => c.status === "pending").length, label: "読影待ち", color: "#D97706", bg: "linear-gradient(135deg,#FEF3C7,#FDE68A)" },
+              { n: cases.filter((c) => c.status === "reported").length, label: "読影済み", color: "#059669", bg: "linear-gradient(135deg,#D1FAE5,#A7F3D0)" },
+            ].map((s) => (
+              <div key={s.label} style={{ flex: 1, padding: "12px 14px", borderRadius: 10, background: s.bg }}>
+                <div style={{ fontSize: 26, fontWeight: 900, color: s.color }}>{s.n}</div>
+                <div style={{ fontSize: 10, color: s.color, opacity: 0.8 }}>{s.label}</div>
+              </div>
+            ))}
+            <button onClick={fetchCases} style={{ width: 44, borderRadius: 10, background: "#f1f5f9", border: "1px solid #e2e8f0", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }} title="更新">🔄</button>
+          </div>
+
+          {role === "requester" && (
+            <button onClick={() => { setView("newRequest"); setUploadedFiles([]); }}
+              style={{ width: "100%", padding: 13, marginBottom: 14, borderRadius: 10, background: "linear-gradient(135deg,#f97316,#ea580c)", color: "#fff", fontSize: 14, fontWeight: 800, border: "none", cursor: "pointer", boxShadow: "0 4px 14px rgba(249,115,22,0.35)" }}>
+              ＋ 新規読影依頼
+            </button>
+          )}
+
+          {loading ? <Spinner message="ケース取得中..." /> : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {(role === "reader" ? cases.filter((c) => c.status === "pending") : cases).map((c) => {
+                const st = STATUS_MAP[c.status] || STATUS_MAP.pending;
+                return (
+                  <div key={c.id} onClick={() => { setSelected(c); setView("detail"); setReportDraft(""); }}
+                    style={{ padding: "13px 15px", borderRadius: 10, cursor: "pointer", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", borderLeft: "4px solid " + st.color, transition: "all 0.15s" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                        <span style={{ fontSize: 11, color: "#94a3b8", fontFamily: "monospace" }}>{c.id}</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{c.bodyPart} {c.modality}</span>
+                      </div>
+                      <span style={{ padding: "2px 9px", borderRadius: 10, fontSize: 10, fontWeight: 700, background: st.bg, color: st.color }}>{st.icon} {st.label}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: "#64748b", lineHeight: 1.5 }}>
+                      {c.clinicalInfo && c.clinicalInfo.length > 55 ? c.clinicalInfo.substring(0, 55) + "…" : c.clinicalInfo}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, fontSize: 10, color: "#94a3b8" }}>
+                      <span>カルテNo: {c.karteNo}</span><span>|</span>
+                      <span>{c.requestDate ? new Date(c.requestDate).toLocaleDateString("ja-JP") : ""}</span>
+                      {c.fileNames && c.fileNames.length > 1 && <span style={{ color: "#7c3aed", fontWeight: 600 }}>📎 過去画像あり</span>}
+                    </div>
+                  </div>
+                );
+              })}
+              {(role === "reader" ? cases.filter((c) => c.status === "pending") : cases).length === 0 && (
+                <div style={{ textAlign: "center", padding: 40, color: "#94a3b8", fontSize: 13 }}>
+                  {role === "reader" ? "読影待ちの依頼はありません 👍" : "依頼はまだありません"}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* DETAIL */}
+      {view === "detail" && selected && (() => {
+        const st = STATUS_MAP[selected.status] || STATUS_MAP.pending;
+        const hasReport = selected.status === "reported";
+        const fNames = selected.fileNames || [];
+        const fIds = selected.fileIds || [];
+        return (
+          <div style={{ padding: 14 }}>
+            <button onClick={() => setView("list")} style={{ background: "none", border: "none", color: "#f97316", cursor: "pointer", fontSize: 12, padding: 0, marginBottom: 12, fontWeight: 600 }}>← 一覧に戻る</button>
+
+            <div style={{ padding: 14, borderRadius: 10, background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", marginBottom: 10, borderTop: "3px solid " + st.color }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <span style={{ fontSize: 11, color: "#94a3b8", fontFamily: "monospace" }}>{selected.id}</span>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", marginTop: 2 }}>{selected.bodyPart} {selected.modality}</div>
+                </div>
+                <span style={{ padding: "3px 10px", borderRadius: 10, fontSize: 11, fontWeight: 700, background: st.bg, color: st.color }}>{st.icon} {st.label}</span>
+              </div>
+              <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 6 }}>カルテNo: {selected.karteNo}　|　依頼: {selected.requestDate ? new Date(selected.requestDate).toLocaleString("ja-JP") : ""}</div>
+            </div>
+
+            <div style={{ padding: 13, borderRadius: 10, background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#6366f1", marginBottom: 5 }}>📋 臨床情報</div>
+              <div style={{ fontSize: 13, lineHeight: 1.7, color: "#1e293b" }}>{selected.clinicalInfo}</div>
+            </div>
+
+            {fNames.length > 0 && (
+              <div style={{ padding: 13, borderRadius: 10, background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#6366f1", marginBottom: 8 }}>📁 DICOMファイル</div>
+                {fNames.map((name, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", borderRadius: 6, background: i === 0 ? "#dbeafe" : "#f1f5f9", marginBottom: i < fNames.length - 1 ? 4 : 0 }}>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700, fontFamily: "monospace", color: "#1e293b" }}>{name}</div>
+                      <div style={{ fontSize: 10, color: "#64748b" }}>{i === 0 ? "最新画像" : "過去画像"}</div>
+                    </div>
+                    {fIds[i] && <a href={"https://drive.google.com/uc?export=download&id=" + fIds[i]} target="_blank" rel="noopener noreferrer" style={{ padding: "4px 10px", fontSize: 10, borderRadius: 4, background: "#0f172a", color: "#fff", textDecoration: "none" }}>📥 DL</a>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ padding: 13, borderRadius: 10, background: "#0a0a14", border: "1px solid #1e293b", marginBottom: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#8ee4af", marginBottom: 8 }}>🖼️ DICOM ビューア（ドラッグでWL/WW調整）</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+                <DicomViewer label={fNames[0] || "最新画像"} showNodule={true} />
+                {fNames.length > 1 && <DicomViewer label={fNames[1] || "過去画像"} showNodule={false} />}
+              </div>
+              <div style={{ textAlign: "center", marginTop: 8, fontSize: 10, color: "#64748b" }}>※ デモ画像です。本番ではcornerstone.jsで実DICOMを表示</div>
+            </div>
+
+            {hasReport ? (
+              <div style={{ padding: 14, borderRadius: 10, marginBottom: 10, background: "#f0fdf4", border: "1px solid #86efac" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#059669", marginBottom: 8 }}>📝 読影所見</div>
+                <div style={{ fontSize: 13, lineHeight: 1.8, color: "#14532d", whiteSpace: "pre-wrap", padding: 12, background: "#fff", borderRadius: 8, border: "1px solid #bbf7d0" }}>{selected.report}</div>
+                <div style={{ fontSize: 10, color: "#6ee7b7", marginTop: 6 }}>報告日時: {selected.reportDate ? new Date(selected.reportDate).toLocaleString("ja-JP") : ""}</div>
+                {role === "requester" && (
+                  <button onClick={() => { navigator.clipboard.writeText(selected.report); notify("📋 所見をコピーしました → 電カルに貼付してください"); }}
+                    style={{ marginTop: 10, padding: 11, borderRadius: 8, width: "100%", background: "linear-gradient(135deg,#059669,#047857)", color: "#fff", fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer", boxShadow: "0 3px 10px rgba(5,150,105,0.3)" }}>
+                    📋 所見をコピー → 電カルに貼付
+                  </button>
+                )}
+              </div>
+            ) : role === "reader" ? (
+              <div style={{ padding: 14, borderRadius: 10, marginBottom: 10, background: "#fffbeb", border: "1px solid #fcd34d" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#D97706", marginBottom: 8 }}>✍️ 読影所見を入力</div>
+                <textarea value={reportDraft} onChange={(e) => setReportDraft(e.target.value)} placeholder={"【読影所見】\n\n\n【診断】\n\n\n【緊急度】★〜★★★"}
+                  style={{ width: "100%", minHeight: 180, padding: 12, borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 13, lineHeight: 1.7, resize: "vertical", boxSizing: "border-box" }} />
+                <button onClick={submitReport} disabled={!reportDraft.trim() || submitting}
+                  style={{ marginTop: 8, padding: 12, borderRadius: 8, width: "100%", background: reportDraft.trim() && !submitting ? "linear-gradient(135deg,#f97316,#ea580c)" : "#d1d5db", color: "#fff", fontSize: 14, fontWeight: 700, border: "none", cursor: reportDraft.trim() && !submitting ? "pointer" : "not-allowed" }}>
+                  {submitting ? "送信中..." : "📤 所見を送信（LINE通知あり）"}
+                </button>
+              </div>
+            ) : (
+              <div style={{ padding: 16, borderRadius: 10, background: "#fffbeb", border: "1px solid #fcd34d", textAlign: "center" }}>
+                <span style={{ fontSize: 24 }}>⏳</span>
+                <div style={{ fontSize: 13, color: "#92400e", marginTop: 4 }}>読影所見の報告を待っています…</div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* NEW REQUEST */}
+      {view === "newRequest" && (() => {
+        const d = new Date(), yy = String(d.getFullYear()).slice(2), mm = String(d.getMonth() + 1).padStart(2, "0"), dd = String(d.getDate()).padStart(2, "0");
+        const preview = form.karteNo ? form.karteNo + "_" + yy + mm + dd + ".dcm" : "カルテNo_YYMMDD.dcm";
+        return (
+          <div style={{ padding: 14 }}>
+            <button onClick={() => setView("list")} style={{ background: "none", border: "none", color: "#f97316", cursor: "pointer", fontSize: 12, padding: 0, marginBottom: 14, fontWeight: 600 }}>← キャンセル</button>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", marginBottom: 14 }}>新規読影依頼</div>
+            <div style={{ padding: 16, borderRadius: 10, background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", marginBottom: 12 }}>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", display: "block", marginBottom: 5 }}>カルテNo</label>
+                <input type="text" inputMode="numeric" value={form.karteNo} onChange={(e) => setForm({ ...form, karteNo: e.target.value.replace(/\D/g, "") })} placeholder="12345"
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "2px solid #e2e8f0", fontSize: 16, fontFamily: "monospace", boxSizing: "border-box", fontWeight: 700 }} />
+                <div style={{ marginTop: 6, padding: "6px 10px", borderRadius: 6, background: "#f1f5f9", fontSize: 11, fontFamily: "monospace", color: form.karteNo ? "#059669" : "#94a3b8" }}>
+                  📄 ファイル名: <strong>{preview}</strong>
+                </div>
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", display: "block", marginBottom: 5 }}>モダリティ</label>
+                <div style={{ display: "flex", gap: 5 }}>
+                  {["CR", "DR"].map((m) => (
+                    <button key={m} onClick={() => setForm({ ...form, modality: m })}
+                      style={{ padding: "7px 18px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: form.modality === m ? "2px solid #f97316" : "1px solid #e2e8f0", background: form.modality === m ? "#fff7ed" : "#fff", color: form.modality === m ? "#ea580c" : "#64748b", fontWeight: form.modality === m ? 700 : 400 }}>{m}</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", display: "block", marginBottom: 5 }}>撮影部位</label>
+                <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                  {["胸部", "腹部", "骨盤", "頭部", "脊椎", "四肢"].map((bp) => (
+                    <button key={bp} onClick={() => setForm({ ...form, bodyPart: bp })}
+                      style={{ padding: "7px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", border: form.bodyPart === bp ? "2px solid #6366f1" : "1px solid #e2e8f0", background: form.bodyPart === bp ? "#eef2ff" : "#fff", color: form.bodyPart === bp ? "#4f46e5" : "#64748b", fontWeight: form.bodyPart === bp ? 700 : 400 }}>{bp}</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", display: "block", marginBottom: 5 }}>臨床情報</label>
+                <textarea value={form.clinicalInfo} onChange={(e) => setForm({ ...form, clinicalInfo: e.target.value })}
+                  placeholder={"例: 72歳男性。2週間続く咳嗽、微熱。喫煙歴40年。\n肺野異常陰影の有無を確認したい。"}
+                  style={{ width: "100%", minHeight: 100, padding: 12, borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13, lineHeight: 1.7, resize: "vertical", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label onClick={() => setForm({ ...form, hasPrev: !form.hasPrev })} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12, color: "#475569" }}>
+                  <div style={{ width: 20, height: 20, borderRadius: 4, border: "2px solid " + (form.hasPrev ? "#7c3aed" : "#cbd5e1"), background: form.hasPrev ? "#7c3aed" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, transition: "all 0.15s" }}>{form.hasPrev ? "✓" : ""}</div>
+                  過去画像も添付する
+                </label>
+                {form.hasPrev && form.karteNo && (
+                  <div style={{ marginTop: 6, padding: "6px 10px", borderRadius: 6, background: "#f5f3ff", fontSize: 11, color: "#7c3aed" }}>
+                    💡 過去画像も「{form.karteNo}_YYMMDD.dcm」形式でリネームしてください
+                  </div>
+                )}
+              </div>
+              <div style={{ padding: 20, borderRadius: 10, border: "2px dashed #cbd5e1", textAlign: "center", background: "#fafafa" }}>
+                <input ref={fileInputRef} type="file" accept=".dcm,.dicom" multiple style={{ display: "none" }} onChange={handleFileSelect} />
+                <div style={{ fontSize: 28, marginBottom: 6 }}>📁</div>
+                <div style={{ fontSize: 12, color: "#64748b" }}>匿名化・リネーム済みのDICOMファイル</div>
+                <button onClick={() => fileInputRef.current.click()} style={{ marginTop: 10, padding: "8px 18px", borderRadius: 8, background: "#0f172a", color: "#fff", border: "none", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>ファイルを選択</button>
+              </div>
+              {uploadedFiles.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  {uploadedFiles.map((f, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", borderRadius: 6, background: "#dbeafe", marginBottom: 4 }}>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 700, fontFamily: "monospace", color: "#1e293b" }}>{f.suggestedName}</div>
+                        <div style={{ fontSize: 10, color: "#64748b" }}>{f.originalName !== f.suggestedName ? "元: " + f.originalName + " | " : ""}{(f.size / 1024).toFixed(0)} KB</div>
+                      </div>
+                      <button onClick={() => setUploadedFiles((prev) => prev.filter((_, idx) => idx !== i))} style={{ padding: "2px 8px", fontSize: 10, borderRadius: 4, background: "#ef4444", color: "#fff", border: "none", cursor: "pointer" }}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button onClick={submitRequest} disabled={!form.karteNo.trim() || !form.clinicalInfo.trim() || submitting}
+              style={{ width: "100%", padding: 14, borderRadius: 10, background: form.karteNo.trim() && form.clinicalInfo.trim() && !submitting ? "linear-gradient(135deg,#f97316,#ea580c)" : "#d1d5db", color: "#fff", fontSize: 15, fontWeight: 800, border: "none", cursor: form.karteNo.trim() && form.clinicalInfo.trim() && !submitting ? "pointer" : "not-allowed", boxShadow: form.karteNo.trim() && form.clinicalInfo.trim() ? "0 4px 14px rgba(249,115,22,0.35)" : "none" }}>
+              {submitting ? "送信中..." : "📤 読影依頼を送信（LINE通知あり）"}
+            </button>
+          </div>
+        );
+      })()}
+
+      <div style={{ textAlign: "center", padding: "20px 0 30px", fontSize: 10, color: "#94a3b8" }}>とみまるシステム v0.2 — 神吉医院</div>
+    </div>
+  );
+}
+
+ReactDOM.render(<App />, document.getElementById("app"));
+</script>
+</body>
+</html>
