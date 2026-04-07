@@ -166,6 +166,7 @@ function App() {
   const [reportDraft, setReportDraft] = useState("");
   const [toast, setToast] = useState(null);
   const [isOffline, setIsOffline] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
 
   const notify = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
@@ -185,20 +186,78 @@ function App() {
 
   useEffect(() => { fetchCases(); }, [fetchCases]);
 
+  const ALLOWED_EXT = ['.dcm', '.dicom', '.jpg', '.jpeg', '.tif', '.tiff'];
+  const isAllowedFile = (name) => {
+    const lower = name.toLowerCase();
+    return ALLOWED_EXT.some(ext => lower.endsWith(ext)) || (!lower.includes('.'));
+  };
+  const getFileExt = (name) => {
+    const dot = name.lastIndexOf('.');
+    return dot >= 0 ? name.substring(dot).toLowerCase() : '.dcm';
+  };
+
+  const processFile = (file) => {
+    if (!isAllowedFile(file.name)) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const base64 = ev.target.result.split(",")[1];
+      const d = new Date(), yy = String(d.getFullYear()).slice(2), mm = String(d.getMonth() + 1).padStart(2, "0"), dd = String(d.getDate()).padStart(2, "0");
+      const ext = getFileExt(file.name);
+      const suggestedName = form.karteNo ? form.karteNo + "_" + yy + mm + dd + ext : file.name;
+      setUploadedFiles((prev) => [...prev, { originalName: file.name, suggestedName, size: file.size, base64, type: ext }]);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleFileSelect = (e) => {
     const files = Array.from(e.target.files);
-    for (const file of files) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const base64 = ev.target.result.split(",")[1];
-        const d = new Date(), yy = String(d.getFullYear()).slice(2), mm = String(d.getMonth() + 1).padStart(2, "0"), dd = String(d.getDate()).padStart(2, "0");
-        const suggestedName = form.karteNo ? form.karteNo + "_" + yy + mm + dd + ".dcm" : file.name;
-        setUploadedFiles((prev) => [...prev, { originalName: file.name, suggestedName, size: file.size, base64 }]);
-      };
-      reader.readAsDataURL(file);
-    }
+    files.forEach(processFile);
     e.target.value = "";
   };
+
+  const traverseEntries = async (entry) => {
+    if (entry.isFile) {
+      return new Promise((resolve) => {
+        entry.file((file) => { processFile(file); resolve(); });
+      });
+    } else if (entry.isDirectory) {
+      const dirReader = entry.createReader();
+      return new Promise((resolve) => {
+        const readAll = (allEntries) => {
+          dirReader.readEntries(async (entries) => {
+            if (entries.length === 0) {
+              for (const e of allEntries) { await traverseEntries(e); }
+              resolve();
+            } else {
+              readAll(allEntries.concat(Array.from(entries)));
+            }
+          });
+        };
+        readAll([]);
+      });
+    }
+  };
+
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+    const items = e.dataTransfer.items;
+    if (items) {
+      const entries = [];
+      for (let i = 0; i < items.length; i++) {
+        const entry = items[i].webkitGetAsEntry && items[i].webkitGetAsEntry();
+        if (entry) entries.push(entry);
+      }
+      for (const entry of entries) { await traverseEntries(entry); }
+    } else {
+      const files = Array.from(e.dataTransfer.files);
+      files.forEach(processFile);
+    }
+  };
+
+  const handleDragOver = (e) => { e.preventDefault(); e.stopPropagation(); setDragOver(true); };
+  const handleDragLeave = (e) => { e.preventDefault(); e.stopPropagation(); setDragOver(false); };
 
   const submitRequest = async () => {
     setSubmitting(true);
@@ -463,23 +522,41 @@ function App() {
                   </div>
                 )}
               </div>
-              <div style={{ padding: 20, borderRadius: 10, border: "2px dashed #cbd5e1", textAlign: "center", background: "#fafafa" }}>
-                <input ref={fileInputRef} type="file" accept=".dcm,.dicom" multiple style={{ display: "none" }} onChange={handleFileSelect} />
-                <div style={{ fontSize: 28, marginBottom: 6 }}>📁</div>
-                <div style={{ fontSize: 12, color: "#64748b" }}>匿名化・リネーム済みのDICOMファイル</div>
-                <button onClick={() => fileInputRef.current.click()} style={{ marginTop: 10, padding: "8px 18px", borderRadius: 8, background: "#0f172a", color: "#fff", border: "none", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>ファイルを選択</button>
+              <div
+                onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}
+                style={{ padding: 20, borderRadius: 10, border: dragOver ? "2px solid #f97316" : "2px dashed #cbd5e1", textAlign: "center", background: dragOver ? "#fff7ed" : "#fafafa", transition: "all 0.2s" }}>
+                <input ref={fileInputRef} type="file" accept=".dcm,.dicom,.jpg,.jpeg,.tif,.tiff" multiple style={{ display: "none" }} onChange={handleFileSelect} />
+                <div style={{ fontSize: 28, marginBottom: 6 }}>{dragOver ? "📂" : "📁"}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: dragOver ? "#ea580c" : "#475569", marginBottom: 4 }}>
+                  {dragOver ? "ここにドロップ！" : "フォルダごとドロップOK"}
+                </div>
+                <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8 }}>
+                  DICOM (.dcm) / JPEG (.jpg) / TIFF (.tiff) を自動検出
+                </div>
+                <div style={{ fontSize: 10, color: "#b0aeb8", marginBottom: 10 }}>
+                  フォルダの中の階層も自動で探索します
+                </div>
+                <button onClick={() => fileInputRef.current.click()} style={{ padding: "8px 18px", borderRadius: 8, background: "#0f172a", color: "#fff", border: "none", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>ファイルを選択</button>
               </div>
               {uploadedFiles.length > 0 && (
                 <div style={{ marginTop: 8 }}>
-                  {uploadedFiles.map((f, i) => (
+                  <div style={{ fontSize: 11, color: "#059669", fontWeight: 700, marginBottom: 4 }}>✅ {uploadedFiles.length}件のファイルを検出</div>
+                  {uploadedFiles.map((f, i) => {
+                    const typeColor = (f.type === '.jpg' || f.type === '.jpeg') ? '#2563eb' : (f.type === '.tif' || f.type === '.tiff') ? '#7c3aed' : '#059669';
+                    const typeLabel = (f.type === '.jpg' || f.type === '.jpeg') ? 'JPG' : (f.type === '.tif' || f.type === '.tiff') ? 'TIFF' : 'DCM';
+                    return (
                     <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", borderRadius: 6, background: "#dbeafe", marginBottom: 4 }}>
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 700, fontFamily: "monospace", color: "#1e293b" }}>{f.suggestedName}</div>
-                        <div style={{ fontSize: 10, color: "#64748b" }}>{f.originalName !== f.suggestedName ? "元: " + f.originalName + " | " : ""}{(f.size / 1024).toFixed(0)} KB</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: typeColor, color: "#fff" }}>{typeLabel}</span>
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 700, fontFamily: "monospace", color: "#1e293b" }}>{f.suggestedName}</div>
+                          <div style={{ fontSize: 10, color: "#64748b" }}>{f.originalName !== f.suggestedName ? "元: " + f.originalName + " | " : ""}{(f.size / 1024).toFixed(0)} KB</div>
+                        </div>
                       </div>
                       <button onClick={() => setUploadedFiles((prev) => prev.filter((_, idx) => idx !== i))} style={{ padding: "2px 8px", fontSize: 10, borderRadius: 4, background: "#ef4444", color: "#fff", border: "none", cursor: "pointer" }}>✕</button>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -491,7 +568,7 @@ function App() {
         );
       })()}
 
-      <div style={{ textAlign: "center", padding: "20px 0 30px", fontSize: 10, color: "#94a3b8" }}>とみまるシステム v0.2 — 神吉医院</div>
+      <div style={{ textAlign: "center", padding: "20px 0 30px", fontSize: 10, color: "#94a3b8" }}>とみまるシステム v0.3 — 神吉医院</div>
     </div>
   );
 }
