@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>とみまるシステム v0.6</title>
+<title>とみまるシステム v0.6.3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -786,6 +786,127 @@ body {
 }
 @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
+/* === アノテーション画像 (v0.6.3) === */
+.annotation-hint {
+  font-size: 11px;
+  color: var(--ink-mute);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+.annotation-hint-small {
+  font-size: 10px;
+  color: var(--ink-mute);
+  margin-top: 4px;
+}
+.annotation-drop {
+  border: 2px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  text-align: center;
+  background: var(--bg-soft);
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: 8px;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+.annotation-drop:hover, .annotation-drop:focus {
+  border-color: var(--accent);
+  background: #f0e8d8;
+  outline: none;
+}
+.annotation-drop.drag-over {
+  border-color: var(--accent);
+  background: #f0e8d8;
+}
+.annotation-existing {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.annotation-thumb {
+  position: relative;
+  aspect-ratio: 1;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+}
+.annotation-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.annotation-remove-existing {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(184, 71, 47, 0.9);
+  color: #fff;
+  border: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+}
+.annotation-remove-existing:hover {
+  background: var(--red);
+}
+.annotation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.annotation-pending {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.annotation-pending img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+}
+.annotation-pending-info {
+  flex: 1;
+  min-width: 0;
+}
+.annotation-pending-info .name {
+  font-size: 12px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.annotation-pending-info .size {
+  font-size: 11px;
+  color: var(--ink-mute);
+}
+.annotation-pending button {
+  background: transparent;
+  border: none;
+  color: var(--red);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 6px;
+}
+
 /* === スピナー === */
 .spinner {
   display: inline-block;
@@ -1062,7 +1183,7 @@ body {
     <h1 class="app-title">
       <span class="paw">🐾</span>
       とみまるシステム
-      <span class="ver">v0.6</span>
+      <span class="ver">v0.6.3</span>
     </h1>
     <div class="mode-switch">
       <button id="modeTosutosu" class="active">とすとす</button>
@@ -1572,6 +1693,14 @@ function render() {
 // 下書きキュー (v0.6)
 // =====================================================
 function renderDrafts() {
+  const section = $('#draftSection');
+  
+  // とみまる(読影医)モードでは下書きキューを非表示
+  if (state.mode === 'tomimaru') {
+    section.style.display = 'none';
+    return;
+  }
+  
   const drafts = state.cases.filter(function(c){ return c.status === 'draft'; })
     .sort(function(a, b) {
       // 撮像日降順
@@ -1583,7 +1712,6 @@ function renderDrafts() {
       return bn - an;
     });
 
-  const section = $('#draftSection');
   if (drafts.length === 0) {
     section.style.display = 'none';
     return;
@@ -1758,6 +1886,18 @@ function openDetail(id) {
 
   // 読影モード or 既に所見ありの表示
   if (state.mode === 'tomimaru') {
+    // 既存のアノテーション画像をサムネ表示
+    const existingAnnotationsHtml = (c.annotationUrls && c.annotationUrls.length)
+      ? '<div class="annotation-existing">' +
+          c.annotationUrls.map(function(url, i) {
+            return '<div class="annotation-thumb" data-existing-url="' + url + '">' +
+                     '<img loading="lazy" src="' + url + '" alt="">' +
+                     '<button class="annotation-remove-existing" data-remove-existing="' + i + '" title="削除">×</button>' +
+                   '</div>';
+          }).join('') +
+        '</div>'
+      : '';
+    
     body += '<div class="detail-section">' +
               '<div class="detail-label">読影所見</div>' +
               '<div class="form-field" style="margin-top:6px">' +
@@ -1769,12 +1909,39 @@ function openDetail(id) {
                 '</div>' +
               '</div>' +
               '<textarea id="reportText" placeholder="所見をご記入ください" style="min-height:140px">' + (c.report || '') + '</textarea>' +
+            '</div>' +
+            '<div class="detail-section">' +
+              '<div class="detail-label">🖼 アノテーション画像 (任意)</div>' +
+              '<div class="annotation-hint">所見と一緒に送る画像を貼り付けられます。所見にマーキングしたJPEG/PNG画像をどうぞ。<br>' +
+              '・ドラッグ&ドロップ ・⌘+V でクリップボードから貼り付け ・ボタンで選択</div>' +
+              existingAnnotationsHtml +
+              '<div class="annotation-drop" id="annotationDrop" tabindex="0">' +
+                '<div>📎 ここに画像をドロップ または ⌘+V で貼り付け</div>' +
+                '<div class="annotation-hint-small">クリックでファイル選択も可</div>' +
+              '</div>' +
+              '<input type="file" id="annotationInput" multiple accept="image/jpeg,image/png,.jpg,.jpeg,.png" style="display:none">' +
+              '<div id="annotationPendingList" class="annotation-list"></div>' +
             '</div>';
   } else if (c.report) {
+    // 既存所見の表示
     body += '<div class="detail-section">' +
               '<div class="detail-label">読影所見 (' + (c.reportDate || '') + ')</div>' +
               '<div class="report-text">' + (c.report || '').replace(/[<>]/g, '') + '</div>' +
             '</div>';
+    // アノテーション画像があれば表示
+    if (c.annotationUrls && c.annotationUrls.length) {
+      body += '<div class="detail-section">' +
+                '<div class="detail-label">🖼 アノテーション画像</div>' +
+                '<div class="images-grid">' +
+                  c.annotationUrls.map(function(url) {
+                    return '<div class="image-thumb" data-img-url="' + url + '">' +
+                             '<img loading="lazy" src="' + url + '" alt="">' +
+                             '<span class="ext">注釈</span>' +
+                           '</div>';
+                  }).join('') +
+                '</div>' +
+              '</div>';
+    }
   }
 
   $('#detailBody').innerHTML = body;
@@ -1822,7 +1989,121 @@ function openDetail(id) {
     });
   }
 
+  // アノテーション画像処理 (とみまるモードのみ)
+  if (state.mode === 'tomimaru') {
+    state.pendingAnnotations = [];          // [{file, base64}] アップロード予定
+    state.existingAnnotations = (c.annotationUrls || []).slice();  // 既存URLのコピー
+    state.removedAnnotations = [];          // 削除されたURL
+    setupAnnotationHandlers(c.id);
+  }
+
   $('#modalDetail').style.display = 'flex';
+}
+
+// =====================================================
+// アノテーション画像 (v0.6.3)
+// =====================================================
+function setupAnnotationHandlers(caseId) {
+  const drop = $('#annotationDrop');
+  const input = $('#annotationInput');
+  if (!drop || !input) return;
+
+  drop.addEventListener('click', function() { input.click(); });
+  input.addEventListener('change', function(e) { handleAnnotationFiles(e.target.files); e.target.value = ''; });
+  
+  drop.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    drop.classList.add('drag-over');
+  });
+  drop.addEventListener('dragleave', function() { drop.classList.remove('drag-over'); });
+  drop.addEventListener('drop', function(e) {
+    e.preventDefault();
+    drop.classList.remove('drag-over');
+    handleAnnotationFiles(e.dataTransfer.files);
+  });
+
+  // クリップボードから貼り付け (モーダル内であれば動作)
+  const pasteHandler = function(e) {
+    // モーダルが閉じてたら無視
+    if ($('#modalDetail').style.display === 'none') return;
+    const items = (e.clipboardData || window.clipboardData).items;
+    if (!items) return;
+    const files = [];
+    for (const item of items) {
+      if (item.type.indexOf('image') === 0) {
+        const file = item.getAsFile();
+        if (file) files.push(file);
+      }
+    }
+    if (files.length > 0) {
+      e.preventDefault();
+      handleAnnotationFiles(files);
+    }
+  };
+  // 一度だけ登録
+  if (!state.annotationPasteHandlerAttached) {
+    document.addEventListener('paste', pasteHandler);
+    state.annotationPasteHandlerAttached = true;
+  }
+
+  // 既存アノテーションの削除ボタン
+  document.querySelectorAll('[data-remove-existing]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.removeExisting);
+      const url = state.existingAnnotations[idx];
+      state.removedAnnotations.push(url);
+      state.existingAnnotations.splice(idx, 1);
+      // DOMから即座に削除
+      btn.parentElement.style.display = 'none';
+    });
+  });
+
+  // 既存アノテーションのクリックでライトボックス
+  document.querySelectorAll('[data-existing-url]').forEach(function(el) {
+    el.addEventListener('click', function(e) {
+      if (e.target.dataset.removeExisting !== undefined) return;
+      openLightbox(el.dataset.existingUrl);
+    });
+  });
+}
+
+async function handleAnnotationFiles(files) {
+  const arr = Array.from(files).filter(function(f) {
+    return f.type === 'image/jpeg' || f.type === 'image/png' || /\.(jpe?g|png)$/i.test(f.name);
+  });
+  if (arr.length === 0) {
+    toast('JPEG または PNG 画像のみ対応しています');
+    return;
+  }
+  for (const file of arr) {
+    const base64 = await fileToBase64(file);
+    state.pendingAnnotations.push({ file: file, base64: base64 });
+  }
+  renderAnnotationPendingList();
+}
+
+function renderAnnotationPendingList() {
+  const el = $('#annotationPendingList');
+  if (!el) return;
+  el.innerHTML = state.pendingAnnotations.map(function(item, i) {
+    const previewUrl = 'data:' + (item.file.type || 'image/png') + ';base64,' + item.base64;
+    const sizeKB = Math.round(item.file.size / 1024);
+    return '<div class="annotation-pending">' +
+             '<img src="' + previewUrl + '" alt="">' +
+             '<div class="annotation-pending-info">' +
+               '<div class="name">' + (item.file.name || 'paste-' + Date.now() + '.png') + '</div>' +
+               '<div class="size">' + sizeKB + ' KB</div>' +
+             '</div>' +
+             '<button data-remove-pending="' + i + '" title="取り消し">×</button>' +
+           '</div>';
+  }).join('');
+  el.querySelectorAll('[data-remove-pending]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      state.pendingAnnotations.splice(parseInt(btn.dataset.removePending), 1);
+      renderAnnotationPendingList();
+    });
+  });
 }
 
 async function submitReport(caseId) {
@@ -1837,9 +2118,39 @@ async function submitReport(caseId) {
   btn.innerHTML = '<span class="spinner"></span>送信中...';
 
   try {
-    const res = await apiPost({ action: 'submitReport', id: caseId, report: reportText, urgency: urgency });
+    // 1. 新規アノテーション画像をアップロード
+    const newAnnotationUrls = [];
+    for (let i = 0; i < state.pendingAnnotations.length; i++) {
+      const item = state.pendingAnnotations[i];
+      btn.innerHTML = '<span class="spinner"></span>画像アップロード中 (' + (i+1) + '/' + state.pendingAnnotations.length + ')';
+      const fileName = item.file.name || (caseId + '_annotation_' + Date.now() + '.png');
+      const res = await apiPost({
+        action: 'uploadFile',
+        fileName: caseId + '_' + fileName,
+        mimeType: item.file.type || 'image/png',
+        base64: item.base64,
+        subfolder: 'annotations',
+      });
+      if (!res.success) throw new Error('画像アップロード失敗: ' + res.error);
+      newAnnotationUrls.push(res.data.url);
+    }
+    btn.innerHTML = '<span class="spinner"></span>送信中...';
+
+    // 2. 最終的なannotation配列 = 残された既存 + 新規
+    const finalAnnotations = (state.existingAnnotations || []).concat(newAnnotationUrls);
+
+    // 3. 所見送信
+    const res = await apiPost({
+      action: 'submitReport',
+      id: caseId,
+      report: reportText,
+      urgency: urgency,
+      annotationUrls: finalAnnotations,
+    });
     if (!res.success) throw new Error(res.error);
     toast('所見を送信しました');
+    state.pendingAnnotations = [];
+    state.existingAnnotations = [];
     $('#modalDetail').style.display = 'none';
     await loadCases();
   } catch (err) {
@@ -1985,12 +2296,14 @@ $('#modeTosutosu').addEventListener('click', function() {
   $('#modeTosutosu').classList.add('active');
   $('#modeTomimaru').classList.remove('active');
   $('#btnNewCase').style.display = 'block';
+  renderDrafts();  // 下書きキューの表示/非表示を更新
 });
 $('#modeTomimaru').addEventListener('click', function() {
   state.mode = 'tomimaru';
   $('#modeTomimaru').classList.add('active');
   $('#modeTosutosu').classList.remove('active');
   $('#btnNewCase').style.display = 'none';
+  renderDrafts();  // 下書きキューの表示/非表示を更新
 });
 
 // 検索
