@@ -1,0 +1,3404 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>とみまるシステム v0.6.10</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;600;700&family=Klee+One:wght@400;600&family=Shippori+Mincho:wght@400;500;700&family=M+PLUS+Rounded+1c:wght@400;500;700&family=RocknRoll+One&display=swap" rel="stylesheet">
+<!-- dcmjs: DICOMパースライブラリ -->
+<script src="https://unpkg.com/dcmjs@0.29.8/build/dcmjs.min.js"></script>
+<style>
+:root {
+  --bg: #f5f1ea;
+  --bg-card: #fdfbf7;
+  --bg-soft: #ede5d6;
+  --ink: #2a2520;
+  --ink-soft: #6b5d4f;
+  --ink-mute: #9a8b7a;
+  --accent: #8b5a3c;
+  --accent-deep: #6b4226;
+  --gold: #b8935a;
+  --line: #d8cdb8;
+  --line-soft: #e8e0d0;
+  --green: #4d7c5a;
+  --amber: #d4a536;
+  --red: #b8472f;
+  --shadow: 0 1px 3px rgba(60,40,20,0.08), 0 4px 12px rgba(60,40,20,0.06);
+  --radius: 4px;
+  --font-display: 'Noto Serif JP', serif;
+  --font-body: 'Noto Sans JP', sans-serif;
+  --btn-radius: 4px;
+  --card-radius: 4px;
+  --title-letter: 0.04em;
+}
+
+/* === テーマA: 和茶亭 (Warm Tea House) === */
+body.theme-warmtea {
+  --bg: #f6f1e7;
+  --bg-card: #fffdf7;
+  --bg-soft: #ebe0c9;
+  --ink: #3d2f20;
+  --ink-soft: #6b4226;
+  --ink-mute: #8b6f4e;
+  --accent: #c48c5a;
+  --accent-deep: #8b5a2b;
+  --gold: #d4a05a;
+  --line: #d4b694;
+  --line-soft: #e5d6b8;
+  --green: #6b8a4a;
+  --amber: #d4a05a;
+  --red: #b8472f;
+  --shadow: 0 1px 3px rgba(100,60,20,0.1), 0 6px 16px rgba(100,60,20,0.08);
+  --radius: 10px;
+  --font-display: 'Shippori Mincho', 'Noto Serif JP', serif;
+  --font-body: 'Klee One', 'Noto Sans JP', sans-serif;
+  --btn-radius: 18px;
+  --card-radius: 10px;
+  --title-letter: 0.08em;
+}
+
+/* === テーマB: 静謐 (Minimal Zen) === */
+body.theme-zen {
+  --bg: #faf9f7;
+  --bg-card: #ffffff;
+  --bg-soft: #f3f1ed;
+  --ink: #1a1a1a;
+  --ink-soft: #5a5a5a;
+  --ink-mute: #888888;
+  --accent: #1a1a1a;
+  --accent-deep: #000000;
+  --gold: #888888;
+  --line: #d8d6d2;
+  --line-soft: #ececec;
+  --green: #4a6a4a;
+  --amber: #aa7700;
+  --red: #aa3322;
+  --shadow: 0 1px 2px rgba(0,0,0,0.04);
+  --radius: 2px;
+  --font-display: 'Noto Serif JP', serif;
+  --font-body: 'Noto Sans JP', sans-serif;
+  --btn-radius: 2px;
+  --card-radius: 2px;
+  --title-letter: 0.05em;
+}
+
+/* === テーマC: ポップ駄菓子屋 (Pop Candy Store) === */
+body.theme-pop {
+  --bg: #fdf6e3;
+  --bg-card: #ffffff;
+  --bg-soft: #fff5d8;
+  --ink: #2d2a1f;
+  --ink-soft: #5a3a1a;
+  --ink-mute: #b88040;
+  --accent: #ff9d6a;
+  --accent-deep: #d6651b;
+  --gold: #ffd966;
+  --line: #f5d089;
+  --line-soft: #fff5d8;
+  --green: #4a8a3a;
+  --amber: #e89020;
+  --red: #d6451b;
+  --shadow: 0 4px 0 rgba(214,101,27,0.2), 0 6px 14px rgba(214,101,27,0.15);
+  --radius: 14px;
+  --font-display: 'RocknRoll One', 'M PLUS Rounded 1c', sans-serif;
+  --font-body: 'M PLUS Rounded 1c', sans-serif;
+  --btn-radius: 16px;
+  --card-radius: 16px;
+  --title-letter: 0.04em;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  transition: background-color 0.3s ease;
+}
+
+/* === ヘッダー === */
+.app-header {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--line);
+  padding: 20px 24px 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+}
+.app-header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.app-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: var(--title-letter);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.app-title .paw { font-size: 24px; }
+.app-title .ver {
+  font-size: 11px;
+  color: var(--ink-mute);
+  font-weight: 400;
+  letter-spacing: 0.1em;
+}
+.mode-switch {
+  display: flex;
+  background: var(--bg-soft);
+  border-radius: var(--btn-radius);
+  padding: 3px;
+  border: 1px solid var(--line);
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.header-settings-btn {
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.2s;
+}
+.header-settings-btn:hover {
+  background: var(--accent);
+  color: #fff;
+  transform: rotate(30deg);
+}
+.mode-switch button {
+  background: transparent;
+  border: none;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--ink-soft);
+  cursor: pointer;
+  border-radius: calc(var(--btn-radius) - 4px);
+  transition: all 0.2s;
+  font-weight: 500;
+}
+.mode-switch button.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* === メインレイアウト === */
+.app-main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* === 検索バー === */
+.search-bar {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: var(--card-radius);
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+.search-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.search-row:last-child { margin-bottom: 0; }
+.search-row.dates {
+  grid-template-columns: 1fr 1fr auto;
+  align-items: end;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.field label {
+  font-size: 11px;
+  color: var(--ink-mute);
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+.field input, .field select {
+  font-family: inherit;
+  font-size: 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.field input:focus, .field select:focus {
+  border-color: var(--accent);
+}
+.btn-clear {
+  background: var(--bg-soft);
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  height: fit-content;
+  transition: all 0.2s;
+}
+.btn-clear:hover {
+  background: var(--line-soft);
+}
+
+/* === 年月ツリー === */
+.tree-container {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 768px) {
+  .tree-container { grid-template-columns: 1fr; }
+}
+.tree-sidebar {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: var(--card-radius);
+  padding: 12px;
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 100px;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+}
+.tree-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 4px 6px 10px;
+  letter-spacing: 0.1em;
+  font-weight: 500;
+  border-bottom: 1px dashed var(--line);
+  padding-bottom: 8px;
+}
+.tree-year {
+  margin-bottom: 4px;
+}
+.tree-year-label {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+  border-radius: 3px;
+  transition: background 0.15s;
+  user-select: none;
+}
+.tree-year-label:hover { background: var(--bg-soft); }
+.tree-year-label .caret {
+  display: inline-block;
+  width: 14px;
+  font-size: 10px;
+  color: var(--ink-mute);
+  transition: transform 0.2s;
+}
+.tree-year-label.expanded .caret { transform: rotate(90deg); }
+.tree-year-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ink-mute);
+  font-weight: 400;
+}
+.tree-months {
+  padding-left: 22px;
+  display: none;
+}
+.tree-months.expanded { display: block; }
+.tree-month {
+  display: flex;
+  align-items: center;
+  padding: 5px 8px 5px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ink-soft);
+  border-radius: 3px;
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+  user-select: none;
+}
+.tree-month:hover {
+  background: var(--bg-soft);
+  color: var(--ink);
+}
+.tree-month.active {
+  background: var(--bg-soft);
+  color: var(--accent-deep);
+  font-weight: 600;
+  border-left-color: var(--accent);
+}
+.tree-month-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ink-mute);
+  background: var(--line-soft);
+  padding: 1px 7px;
+  border-radius: 10px;
+}
+.tree-month.active .tree-month-count {
+  background: var(--accent);
+  color: #fff;
+}
+.tree-all {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ink-soft);
+  border-radius: 3px;
+  margin-bottom: 6px;
+  transition: all 0.15s;
+}
+.tree-all:hover { background: var(--bg-soft); }
+.tree-all.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* === ケース一覧 === */
+.cases-area {
+  min-height: 200px;
+}
+.cases-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+.cases-title {
+  font-family: "Noto Serif JP", serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 0.05em;
+}
+.cases-meta {
+  font-size: 12px;
+  color: var(--ink-mute);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sort-indicator {
+  font-size: 11px;
+  color: var(--accent);
+  background: #f5ecd9;
+  padding: 2px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+.case-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.case-card {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: var(--card-radius);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: var(--shadow);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: center;
+}
+.case-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(60,40,20,0.12), 0 6px 16px rgba(60,40,20,0.08);
+}
+.case-date-block {
+  text-align: center;
+  padding-right: 14px;
+  border-right: 1px solid var(--line-soft);
+  min-width: 56px;
+}
+.case-date-md {
+  font-family: "Noto Serif JP", serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--accent-deep);
+  line-height: 1.1;
+}
+.case-date-y {
+  font-size: 10px;
+  color: var(--ink-mute);
+  letter-spacing: 0.1em;
+}
+.case-info {
+  min-width: 0;
+}
+.case-row1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.case-id {
+  font-size: 11px;
+  color: var(--ink-mute);
+  letter-spacing: 0.08em;
+  font-family: "Noto Serif JP", serif;
+}
+.case-karte {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+}
+.case-body-part {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.case-question {
+  font-size: 12px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.case-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.badge-pending {
+  background: #fef4dd;
+  color: #8a6510;
+  border: 1px solid #e8c977;
+}
+.badge-reported {
+  background: #e3f0e6;
+  color: #2d5a38;
+  border: 1px solid #97c3a3;
+}
+.badge-urgency-1 { background: #e8f0e8; color: var(--green); }
+.badge-urgency-2 { background: #fef4dd; color: var(--amber); }
+.badge-urgency-3 { background: #fde4dd; color: var(--red); border: 1px solid #e8a294; }
+
+/* === v0.6.10: 依頼緊急度(⚡) と 読影重要度(🔍) の2本立て ===
+   形で区別: 依頼=枠線のみ / 読影=塗りつぶし
+   色は共通: ★緑 / ★★黄 / ★★★赤 */
+.lvl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+.lvl-chip .lvl-k { font-weight: 500; opacity: 0.85; }
+/* 依頼緊急度: 白地＋色枠 */
+.lvl-req { background: #fff; border: 1.5px solid currentColor; }
+.lvl-req.lv1 { color: var(--green); }
+.lvl-req.lv2 { color: #a87a12; }
+.lvl-req.lv3 { color: var(--red); }
+/* 読影重要度: 塗りつぶし */
+.lvl-imp { border: 1.5px solid transparent; color: #fff; }
+.lvl-imp.lv1 { background: var(--green); }
+.lvl-imp.lv2 { background: #c9921a; }
+.lvl-imp.lv3 { background: var(--red); }
+.lvl-imp.lv0 { background: transparent; color: var(--ink-mute); border: 1.5px dashed var(--line); }
+/* 読影重要度が高いカードは左端に色帯 */
+.case-card.imp-2 { box-shadow: inset 5px 0 0 #c9921a, var(--shadow); }
+.case-card.imp-3 { box-shadow: inset 5px 0 0 var(--red), var(--shadow); background: #fff7f4; }
+/* 所見のワンタップコピー */
+.btn-copy-report {
+  border: 1px solid var(--accent);
+  background: var(--bg-card);
+  color: var(--accent-deep);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: var(--btn-radius, 6px);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-copy-report:hover { background: var(--accent); color: #fff; }
+.btn-copy-report.done { background: var(--green); border-color: var(--green); color: #fff; }
+.report-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.report-text.imp-3 { border-left-color: var(--red); }
+.report-text.imp-2 { border-left-color: #c9921a; }
+.lvl-legend { font-size: 11px; color: var(--ink-mute); margin-top: 4px; }
+/* v0.6.8で決めた所見枠の拡大を先行反映 */
+#reportText {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 340px;
+  resize: vertical;
+  margin-top: 10px;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.7;
+  font-family: inherit;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  color: var(--ink);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--ink-mute);
+  font-size: 14px;
+  background: var(--bg-card);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+}
+.empty-state .paw { font-size: 40px; display: block; margin-bottom: 12px; opacity: 0.4; }
+
+/* === ページネーション === */
+.pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+.btn-more {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  padding: 10px 28px;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-more:hover {
+  border-color: var(--accent);
+  color: var(--accent-deep);
+}
+
+/* === 新規ケース作成ボタン === */
+.fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  padding: 14px 22px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(139,90,60,0.4);
+  z-index: 50;
+  transition: all 0.2s;
+}
+.fab:hover {
+  background: var(--accent-deep);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(139,90,60,0.5);
+}
+
+/* === モーダル === */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(42,37,32,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
+  animation: fadeIn 0.2s;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  max-width: 720px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  animation: slideUp 0.25s;
+}
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-header {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: var(--bg-card);
+  z-index: 1;
+}
+.modal-title {
+  font-family: "Noto Serif JP", serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.modal-close {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  color: var(--ink-mute);
+  cursor: pointer;
+  padding: 0 4px;
+}
+.modal-body {
+  padding: 20px 22px;
+}
+.modal-footer {
+  padding: 14px 22px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  background: var(--bg-card);
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 9px 22px;
+  border-radius: var(--btn-radius);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-primary:hover { background: var(--accent-deep); }
+.btn-primary:disabled { background: var(--ink-mute); cursor: not-allowed; }
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  padding: 9px 18px;
+  border-radius: var(--btn-radius);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-secondary:hover {
+  background: var(--bg-soft);
+  border-color: var(--ink-mute);
+}
+
+.form-field {
+  margin-bottom: 14px;
+}
+.form-field label {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-bottom: 5px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+.form-field label .req { color: var(--red); margin-left: 3px; }
+.form-field label .auto {
+  font-size: 10px;
+  color: var(--gold);
+  margin-left: 6px;
+  font-weight: 400;
+}
+.form-field input, .form-field textarea, .form-field select {
+  width: 100%;
+  font-family: inherit;
+  font-size: 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--ink);
+  outline: none;
+}
+.form-field input:focus, .form-field textarea:focus, .form-field select:focus {
+  border-color: var(--accent);
+}
+.form-field textarea { resize: vertical; min-height: 80px; }
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.urgency-radio {
+  display: flex;
+  gap: 8px;
+}
+.urgency-radio label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.15s;
+  background: #fff;
+}
+.urgency-radio input { display: none; }
+.urgency-radio input:checked + span {
+  display: inline-block;
+}
+.urgency-radio label:has(input:checked) {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.urgency-radio label:hover { border-color: var(--accent); }
+
+.file-drop {
+  border: 2px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+  background: var(--bg-soft);
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: 8px;
+}
+.file-drop:hover { border-color: var(--accent); background: #f0e8d8; }
+.file-drop.drag-over { border-color: var(--accent); background: #f0e8d8; }
+.file-drop .hint { font-size: 12px; color: var(--ink-mute); }
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-soft);
+  border-radius: 3px;
+  font-size: 12px;
+}
+.file-item .name { color: var(--ink); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-item .size { color: var(--ink-mute); margin: 0 8px; }
+.file-item button {
+  background: transparent;
+  border: none;
+  color: var(--red);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+}
+.dicom-info {
+  background: #f5ecd9;
+  border-left: 3px solid var(--gold);
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin-top: 6px;
+  border-radius: 2px;
+}
+.dicom-info .label { font-weight: 600; color: var(--accent-deep); }
+
+/* === 詳細・所見 === */
+.detail-section {
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px dashed var(--line);
+}
+.detail-section:last-child { border-bottom: none; }
+.detail-label {
+  font-size: 11px;
+  color: var(--ink-mute);
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+.detail-value {
+  font-size: 14px;
+  color: var(--ink);
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+.report-text {
+  white-space: pre-wrap;
+  background: var(--bg-soft);
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  line-height: 1.7;
+  border-left: 3px solid var(--green);
+}
+.images-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+.image-thumb {
+  aspect-ratio: 1;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--ink-mute);
+  position: relative;
+}
+.image-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.image-thumb .ext {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  letter-spacing: 0.05em;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  padding: 20px;
+}
+.lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  color: #fff;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.3);
+  font-size: 22px;
+  padding: 4px 12px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 13px;
+  z-index: 400;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+  animation: toastIn 0.3s;
+}
+@keyframes toastIn { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* === v0.6.5: テーマ選択UI === */
+.theme-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.theme-option {
+  position: relative;
+  border: 2px solid var(--line);
+  border-radius: var(--card-radius);
+  padding: 10px;
+  cursor: pointer;
+  text-align: center;
+  background: var(--bg-card);
+  transition: all 0.2s;
+}
+.theme-option:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.theme-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.theme-option.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(139,90,60,0.15);
+  background: var(--bg-soft);
+}
+.theme-preview {
+  height: 48px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.tp-warmtea {
+  background: linear-gradient(135deg, #f6f1e7 0%, #ebe0c9 50%, #c48c5a 100%);
+  border: 1px solid #d4b694;
+}
+.tp-zen {
+  background: linear-gradient(135deg, #faf9f7 50%, #1a1a1a 50%, #1a1a1a 100%);
+  border: 1px solid #d8d6d2;
+}
+.tp-pop {
+  background: linear-gradient(135deg, #fdf6e3 0%, #ffe4a3 50%, #ff9d6a 100%);
+  border: 1.5px solid #f5d089;
+}
+.theme-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+.theme-sub {
+  font-size: 10px;
+  color: var(--ink-mute);
+}
+
+/* === v0.6.4: お小遣いバナー & タブ === */
+.earnings-banner {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 50%, #f59e0b 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 14px;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 12px rgba(245,158,11,0.25);
+}
+.earnings-banner-inner {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.earnings-coin {
+  font-size: 38px;
+  font-weight: 800;
+  color: #b45309;
+  text-shadow: 1px 1px 0 #fff, 2px 2px 4px rgba(180,83,9,0.3);
+  font-family: 'Noto Sans JP', sans-serif;
+}
+.earnings-banner-text {
+  flex: 1;
+}
+.earnings-banner-label {
+  font-size: 13px;
+  color: #92400e;
+  font-weight: 600;
+}
+.earnings-banner-amount {
+  font-size: 30px;
+  font-weight: 800;
+  color: #b45309;
+  text-shadow: 1px 1px 0 #fff;
+  line-height: 1.2;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+.earnings-banner-sub {
+  font-size: 11px;
+  color: #78350f;
+  margin-top: 2px;
+}
+.earnings-settings-btn {
+  background: rgba(255,255,255,0.7);
+  border: 1px solid #f59e0b;
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.15s;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.earnings-settings-btn:hover {
+  background: #fff;
+  transform: rotate(45deg);
+}
+
+/* お小遣い履歴 */
+.earnings-history {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.earnings-history-title {
+  font-size: 12px;
+  color: var(--ink-mute);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.earnings-month-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+}
+.earnings-month-row:hover { background: var(--bg-soft); }
+.earnings-month-row .ym {
+  color: var(--ink-soft);
+}
+.earnings-month-row .amt {
+  font-weight: 700;
+  color: var(--accent-deep);
+}
+.earnings-month-row .cnt {
+  font-size: 10px;
+  color: var(--ink-mute);
+  margin-right: 6px;
+}
+
+/* タブ */
+.tomimaru-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid var(--line);
+  padding-bottom: 0;
+}
+.tomimaru-tab {
+  background: transparent;
+  border: none;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-mute);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s;
+}
+.tomimaru-tab:hover {
+  color: var(--accent);
+}
+.tomimaru-tab.active {
+  color: var(--accent-deep);
+  border-bottom-color: var(--accent);
+}
+.tomimaru-tab .tab-count {
+  background: var(--accent);
+  color: #fff;
+  border-radius: 10px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.tomimaru-tab.active .tab-count {
+  background: var(--accent-deep);
+}
+
+/* ボーナス行 */
+.bonus-row {
+  display: grid;
+  grid-template-columns: 100px 100px 1fr 30px;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.bonus-row input {
+  padding: 6px 8px;
+  font-size: 13px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  width: 100%;
+}
+.bonus-row .bonus-remove {
+  background: transparent;
+  border: none;
+  color: var(--red);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* === アノテーション画像 (v0.6.3) === */
+.annotation-hint {
+  font-size: 11px;
+  color: var(--ink-mute);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+.annotation-hint-small {
+  font-size: 10px;
+  color: var(--ink-mute);
+  margin-top: 4px;
+}
+.annotation-drop {
+  border: 2px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  text-align: center;
+  background: var(--bg-soft);
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: 8px;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+.annotation-drop:hover, .annotation-drop:focus {
+  border-color: var(--accent);
+  background: #f0e8d8;
+  outline: none;
+}
+.annotation-drop.drag-over {
+  border-color: var(--accent);
+  background: #f0e8d8;
+}
+.annotation-existing {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.annotation-thumb {
+  position: relative;
+  aspect-ratio: 1;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+}
+.annotation-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.annotation-remove-existing {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(184, 71, 47, 0.9);
+  color: #fff;
+  border: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+}
+.annotation-remove-existing:hover {
+  background: var(--red);
+}
+.annotation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.annotation-pending {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.annotation-pending img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+}
+.annotation-pending-info {
+  flex: 1;
+  min-width: 0;
+}
+.annotation-pending-info .name {
+  font-size: 12px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.annotation-pending-info .size {
+  font-size: 11px;
+  color: var(--ink-mute);
+}
+.annotation-pending button {
+  background: transparent;
+  border: none;
+  color: var(--red);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 6px;
+}
+
+/* === スピナー === */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* === 下書きキュー (v0.6) === */
+.draft-section {
+  background: linear-gradient(180deg, #fff8e8 0%, #faecd0 100%);
+  border: 1px solid #d4b67a;
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(184,147,90,0.15);
+  transition: padding 0.2s;
+}
+/* 折りたたみ時はコンパクトに */
+.draft-section.collapsed {
+  padding: 10px 16px;
+}
+.draft-section.collapsed .draft-header {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+.draft-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed #d4b67a;
+  cursor: pointer;
+}
+.draft-collapsed-hint {
+  font-size: 11px;
+  color: var(--accent-deep);
+  margin-left: 10px;
+  font-weight: 400;
+  display: none;
+}
+.draft-section.collapsed .draft-collapsed-hint {
+  display: inline;
+}
+/* 目立つバッジ: 折りたたみ時は赤系で警告感 */
+.draft-badge-prominent {
+  background: var(--gold);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 12px;
+  letter-spacing: 0.05em;
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+.draft-section.collapsed .draft-badge-prominent {
+  background: var(--red);
+  font-size: 13px;
+  padding: 4px 14px;
+}
+@keyframes badge-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+/* 折りたたみ時はリストを非表示 */
+.draft-list.collapsed {
+  display: none;
+}
+.draft-title {
+  font-family: "Noto Serif JP", serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent-deep);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.draft-badge {
+  background: var(--gold);
+  color: #fff;
+  font-size: 11px;
+  padding: 2px 9px;
+  border-radius: 10px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+.draft-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.3); }
+}
+.draft-toggle {
+  background: transparent;
+  border: 1px solid #c8a86a;
+  color: var(--accent-deep);
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.draft-toggle:hover { background: rgba(212,165,54,0.1); }
+.draft-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.draft-card {
+  background: #fff;
+  border: 1px solid #e0c896;
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(184,147,90,0.1);
+}
+.draft-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.draft-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
+}
+.draft-meta .id {
+  font-family: "Noto Serif JP", serif;
+  font-size: 11px;
+  color: var(--ink-mute);
+  letter-spacing: 0.05em;
+}
+.draft-meta .karte {
+  font-weight: 700;
+  color: var(--ink);
+}
+.draft-meta .body-part {
+  color: var(--ink-soft);
+}
+.draft-meta .date {
+  color: var(--accent-deep);
+  font-weight: 500;
+}
+.draft-file-count {
+  font-size: 11px;
+  color: var(--ink-mute);
+  background: var(--bg-soft);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.draft-form {
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+@media (max-width: 600px) {
+  .draft-form { grid-template-columns: 1fr; }
+}
+.draft-form textarea {
+  width: 100%;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  outline: none;
+  resize: vertical;
+  min-height: 64px;
+}
+.draft-form textarea:focus { border-color: var(--accent); }
+.draft-urgency-mini {
+  display: flex;
+  gap: 4px;
+}
+.draft-urgency-mini label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 4px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  background: #fff;
+  color: var(--ink-soft);
+  transition: all 0.15s;
+}
+.draft-urgency-mini input { display: none; }
+.draft-urgency-mini label:has(input:checked) {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.draft-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line-soft);
+}
+.draft-actions-left {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.draft-link {
+  font-size: 11px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  cursor: pointer;
+  background: #fff;
+  transition: all 0.15s;
+}
+.draft-link:hover {
+  border-color: var(--accent);
+  color: var(--accent-deep);
+}
+.draft-actions-right { display: flex; gap: 6px; }
+.btn-draft-send {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 7px 16px;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-draft-send:hover { background: var(--accent-deep); }
+.btn-draft-send:disabled { background: var(--ink-mute); cursor: not-allowed; }
+.btn-draft-delete {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink-mute);
+  padding: 7px 12px;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-draft-delete:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+.draft-empty {
+  text-align: center;
+  padding: 16px;
+  color: var(--ink-mute);
+  font-size: 12px;
+}
+
+/* 比較画像セクション */
+.compare-section {
+  background: #f0e8d0;
+  border-left: 3px solid var(--gold);
+  padding: 8px 12px;
+  margin-top: 10px;
+  border-radius: 2px;
+  font-size: 12px;
+}
+.compare-section .label {
+  font-weight: 600;
+  color: var(--accent-deep);
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+.compare-thumbs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.compare-thumbs a {
+  font-size: 11px;
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 2px 8px;
+  border-radius: 10px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  cursor: pointer;
+}
+.compare-thumbs a:hover { border-color: var(--accent); color: var(--accent-deep); }
+</style>
+</head>
+<body>
+<header class="app-header">
+  <div class="app-header-inner">
+    <h1 class="app-title">
+      <span class="paw">🐾</span>
+      とみまるシステム
+      <span class="ver">v0.6.10</span>
+    </h1>
+    <div class="header-actions">
+      <button id="btnOpenSettingsHeader" class="header-settings-btn" title="設定">⚙️</button>
+      <div class="mode-switch">
+        <button id="modeTosutosu" class="active">とすとす</button>
+        <button id="modeTomimaru">とみまる</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="app-main">
+  <!-- 検索バー -->
+  <div class="search-bar">
+    <div class="search-row">
+      <div class="field">
+        <label>カルテNo・部位・ID で検索</label>
+        <input type="text" id="searchText" placeholder="例) 12345, 胸部, CASE-0042">
+      </div>
+      <div class="field">
+        <label>状態</label>
+        <select id="filterStatus">
+          <option value="all">すべて</option>
+          <option value="pending">読影待ち</option>
+          <option value="reported">読影済み</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>緊急度・重要度</label>
+        <select id="filterUrgency">
+          <option value="all">すべて</option>
+          <option value="★★★">⚡依頼 ★★★ のみ</option>
+          <option value="★★">⚡依頼 ★★ 以上</option>
+          <option value="imp3">🔍読影 ★★★ のみ</option>
+          <option value="imp2">🔍読影 ★★ 以上</option>
+        </select>
+      </div>
+    </div>
+    <div class="search-row dates">
+      <div class="field">
+        <label>撮像日 (from)</label>
+        <input type="date" id="dateFrom">
+      </div>
+      <div class="field">
+        <label>撮像日 (to)</label>
+        <input type="date" id="dateTo">
+      </div>
+      <button class="btn-clear" id="btnClearFilter">条件クリア</button>
+    </div>
+  </div>
+
+  <!-- 下書きキュー (Mac側監視ツールから登録された未送信ケース) -->
+  <div id="draftSection" class="draft-section collapsed" style="display:none">
+    <div class="draft-header" id="draftHeader">
+      <div class="draft-title">
+        <span class="draft-pulse"></span>
+        📥 下書きキュー
+        <span class="draft-badge draft-badge-prominent" id="draftCount">0</span>
+        <span class="draft-collapsed-hint" id="draftCollapsedHint">送信忘れに注意!クリックで展開</span>
+      </div>
+      <button class="draft-toggle" id="btnDraftToggle">展開</button>
+    </div>
+    <div id="draftList" class="draft-list collapsed"></div>
+  </div>
+
+  <!-- とみまるモード時: 今月のお小遣いバナー -->
+  <div id="earningsBanner" class="earnings-banner" style="display:none">
+    <div class="earnings-banner-inner">
+      <span class="earnings-coin">¥</span>
+      <div class="earnings-banner-text">
+        <div class="earnings-banner-label" id="earningsMonth">今月のおこづかい</div>
+        <div class="earnings-banner-amount" id="earningsAmount">¥0</div>
+        <div class="earnings-banner-sub" id="earningsSubLabel">0件 × 0円</div>
+      </div>
+      <button class="earnings-settings-btn" id="btnOpenSettings" title="設定を開く">⚙️</button>
+    </div>
+  </div>
+
+  <!-- 年月ツリー + ケース一覧 -->
+  <div class="tree-container">
+    <aside class="tree-sidebar">
+      <div class="tree-title">📂 撮像日アーカイブ</div>
+      <div id="treeAll" class="tree-all active">
+        <span>すべて</span>
+        <span class="tree-month-count" id="treeAllCount">0</span>
+      </div>
+      <div id="tree"></div>
+      <!-- お小遣い履歴(とみまるモードのみ) -->
+      <div id="earningsHistory" class="earnings-history" style="display:none">
+        <div class="earnings-history-title">💰 おこづかい履歴</div>
+        <div id="earningsHistoryList"></div>
+      </div>
+    </aside>
+
+    <section class="cases-area">
+      <!-- とみまるモード時: タブ -->
+      <div id="tomimaruTabs" class="tomimaru-tabs" style="display:none">
+        <button class="tomimaru-tab active" data-tab="pending">📥 読影まち <span class="tab-count" id="tabCountPending">0</span></button>
+        <button class="tomimaru-tab" data-tab="reported">✓ 読影ずみ <span class="tab-count" id="tabCountReported">0</span></button>
+      </div>
+      <div class="cases-header">
+        <div class="cases-title" id="casesTitle">すべて</div>
+        <div class="cases-meta">
+          <span id="casesMeta">0件</span>
+          <span class="sort-indicator">↓ 新しい順</span>
+        </div>
+      </div>
+      <div id="caseList" class="case-list"></div>
+      <div id="pagination" class="pagination" style="display:none">
+        <button class="btn-more" id="btnMore">さらに表示</button>
+      </div>
+    </section>
+  </div>
+</main>
+
+<button class="fab" id="btnNewCase">＋ 新規依頼</button>
+
+<!-- 新規ケース作成モーダル -->
+<div id="modalCreate" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📷 新規読影依頼</div>
+      <button class="modal-close" data-close="modalCreate">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row-2">
+        <div class="form-field">
+          <label>カルテNo <span class="req">*</span></label>
+          <input type="text" id="newKarteNo" placeholder="例) 12345">
+        </div>
+        <div class="form-field">
+          <label>部位 <span class="req">*</span></label>
+          <input type="text" id="newBodyPart" placeholder="例) 胸部・腹部">
+        </div>
+      </div>
+      <div class="form-field">
+        <label>
+          撮像日
+          <span class="req">*</span>
+          <span class="auto" id="dateAutoLabel" style="display:none">✨ DICOMから自動取得</span>
+        </label>
+        <input type="date" id="newImagingDate">
+      </div>
+      <div class="form-field">
+        <label>緊急度</label>
+        <div class="urgency-radio">
+          <label><input type="radio" name="newUrgency" value="★" checked><span>★ 通常</span></label>
+          <label><input type="radio" name="newUrgency" value="★★"><span>★★ やや急ぎ</span></label>
+          <label><input type="radio" name="newUrgency" value="★★★"><span>★★★ 至急</span></label>
+        </div>
+      </div>
+      <div class="form-field">
+        <label>依頼内容・所見ポイント</label>
+        <textarea id="newQuestion" placeholder="読影してほしいポイント、臨床経過、既往歴など"></textarea>
+      </div>
+      <div class="form-field">
+        <label>画像ファイル <span class="req">*</span></label>
+        <div class="file-drop" id="fileDrop">
+          <div>📁 クリック または ドラッグ&ドロップ</div>
+          <div class="hint">DICOM (.dcm) / JPG / PNG / TIFF (複数可)</div>
+        </div>
+        <input type="file" id="fileInput" multiple accept=".dcm,.jpg,.jpeg,.png,.tiff,.tif,application/dicom" style="display:none">
+        <div id="fileList" class="file-list"></div>
+        <div id="dicomInfo" style="display:none"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" data-close="modalCreate">キャンセル</button>
+      <button class="btn-primary" id="btnSubmitCase">依頼を送信</button>
+    </div>
+  </div>
+</div>
+
+<!-- ケース詳細モーダル -->
+<div id="modalDetail" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="detailTitle">ケース詳細</div>
+      <button class="modal-close" data-close="modalDetail">×</button>
+    </div>
+    <div class="modal-body" id="detailBody"></div>
+    <div class="modal-footer" id="detailFooter"></div>
+  </div>
+</div>
+
+<!-- 設定モーダル (v0.6.4) -->
+<div id="modalSettings" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">⚙️ 設定 / おこづかい</div>
+      <button class="modal-close" data-close="modalSettings">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-section">
+        <div class="detail-label">🎨 デザイン (このブラウザ + モード別)</div>
+        <div class="annotation-hint-small" style="margin-bottom:10px">選んだ瞬間に切り替わります</div>
+        <div id="themeSelector" class="theme-selector">
+          <label class="theme-option" data-theme="warmtea">
+            <input type="radio" name="themeChoice" value="warmtea">
+            <div class="theme-preview tp-warmtea"></div>
+            <div class="theme-name">和茶亭</div>
+            <div class="theme-sub">落ち着いた和風</div>
+          </label>
+          <label class="theme-option" data-theme="zen">
+            <input type="radio" name="themeChoice" value="zen">
+            <div class="theme-preview tp-zen"></div>
+            <div class="theme-name">静謐</div>
+            <div class="theme-sub">ミニマル</div>
+          </label>
+          <label class="theme-option" data-theme="pop">
+            <input type="radio" name="themeChoice" value="pop">
+            <div class="theme-preview tp-pop"></div>
+            <div class="theme-name">ポップ駄菓子屋</div>
+            <div class="theme-sub">楽しい</div>
+          </label>
+        </div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-label">💰 読影単価</div>
+        <div class="form-field">
+          <label>1件あたりの単価 (円)</label>
+          <input type="number" id="settingUnitPrice" min="0" step="50" placeholder="300">
+        </div>
+        <div class="annotation-hint-small">この単価は読影完了時に自動計算されます</div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-label">📄 契約書</div>
+        <div class="form-field">
+          <label>Google Drive リンク (任意)</label>
+          <input type="text" id="settingContractUrl" placeholder="https://drive.google.com/...">
+        </div>
+        <div id="settingContractPreview" style="margin-top:8px"></div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-label">🎁 月別ボーナス・調整</div>
+        <div class="annotation-hint-small">記念ボーナスや調整額を月別に追加できます</div>
+        <div id="bonusList" style="margin-top:10px"></div>
+        <button class="btn-secondary" id="btnAddBonus" style="margin-top:8px">＋ ボーナスを追加</button>
+      </div>
+      <div class="detail-section">
+        <div class="detail-label">📝 メモ</div>
+        <div class="form-field">
+          <textarea id="settingMemo" placeholder="自由にメモをどうぞ" style="min-height:80px"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" data-close="modalSettings">閉じる</button>
+      <button class="btn-primary" id="btnSaveSettings">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="display:none"></div>
+
+<script>
+// =====================================================
+// とみまるシステム v0.5 - フロントエンド
+// =====================================================
+
+// ⚠️ ここを自分のGAS WebアプリURLに置き換えてください
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbw3Z_weqy06SBmtj7oskjWRepCp2wUG4UdSsN1_X52r4ZT0s9BlNf3xPxj0tNui5KxN/exec';
+
+// 状態
+const state = {
+  mode: 'tosutosu', // 'tosutosu' | 'tomimaru'
+  cases: [],
+  filtered: [],
+  selectedYear: null,  // null = すべて
+  selectedMonth: null, // null = すべて または 年だけ選択
+  searchText: '',
+  filterStatus: 'all',
+  filterUrgency: 'all',
+  dateFrom: '',
+  dateTo: '',
+  page: 1,
+  pageSize: 20,
+  pendingFiles: [], // [{file, dataUrl?, base64, imagingDate?}]
+  tomimaruTab: 'pending', // とみまるモード用タブ: 'pending' | 'reported'
+  earnings: null,         // 月別お小遣い情報
+  settings: { unitPrice: 300, contractUrl: '', memo: '', bonuses: [] },
+  themes: { tosutosu: 'warmtea', tomimaru: 'warmtea' },  // モード別テーマ (localStorage)
+  editingDrafts: new Set(),  // 編集中の下書きID (再描画時に保護する)
+  draftLocalValues: {},      // {draftId: {karteNo, bodyPart, imagingDate, question, urgency}} 編集中のローカル値
+};
+
+// =====================================================
+// ユーティリティ
+// =====================================================
+function $(sel) { return document.querySelector(sel); }
+function $$(sel) { return Array.from(document.querySelectorAll(sel)); }
+
+function toast(msg, ms) {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.className = 'toast';
+  el.style.display = 'block';
+  setTimeout(function() { el.style.display = 'none'; }, ms || 2500);
+}
+
+function formatDate(d) {
+  if (!d) return '';
+  if (typeof d === 'string') return d.split(' ')[0]; // datetime対応
+  const dt = (d instanceof Date) ? d : new Date(d);
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const day = String(dt.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+
+function parseImagingDate(s) {
+  if (!s) return null;
+  const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  return { year: parseInt(m[1]), month: parseInt(m[2]), day: parseInt(m[3]), iso: m[0] };
+}
+
+function todayStr() {
+  return formatDate(new Date());
+}
+
+function fileToBase64(file) {
+  return new Promise(function(resolve, reject) {
+    const reader = new FileReader();
+    reader.onload = function() {
+      // result は "data:xxx;base64,XXXX" 形式
+      const b64 = String(reader.result).split(',')[1];
+      resolve(b64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function fileToDataURL(file) {
+  return new Promise(function(resolve, reject) {
+    const reader = new FileReader();
+    reader.onload = function() { resolve(reader.result); };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// =====================================================
+// DICOM日付抽出
+// =====================================================
+function isDicomFile(file) {
+  const name = file.name.toLowerCase();
+  return name.endsWith('.dcm') || file.type === 'application/dicom';
+}
+
+async function extractDicomDate(file) {
+  try {
+    const buf = await file.arrayBuffer();
+    const dicomData = dcmjs.data.DicomMessage.readFile(buf);
+    const dataset = dcmjs.data.DicomMetaDictionary.naturalizeDataset(dicomData.dict);
+
+    // StudyDate (0008,0020) を優先、なければ AcquisitionDate / SeriesDate / ContentDate
+    const dateStr = dataset.StudyDate || dataset.AcquisitionDate || dataset.SeriesDate || dataset.ContentDate;
+    if (!dateStr) return null;
+    // 形式: YYYYMMDD
+    const s = String(dateStr);
+    if (s.length !== 8) return null;
+    return s.substring(0,4) + '-' + s.substring(4,6) + '-' + s.substring(6,8);
+  } catch (err) {
+    console.warn('DICOM parse error:', err);
+    return null;
+  }
+}
+
+// =====================================================
+// API
+// =====================================================
+async function apiGet(action) {
+  const url = GAS_URL + '?action=' + encodeURIComponent(action);
+  const res = await fetch(url);
+  return res.json();
+}
+
+async function apiPost(payload) {
+  // GAS は CORS の都合で text/plain で送る
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload),
+    redirect: 'follow',
+  });
+  return res.json();
+}
+
+// =====================================================
+// データロード
+// =====================================================
+async function loadCases() {
+  try {
+    const res = await apiGet('getCases');
+    if (!res.success) throw new Error(res.error);
+    state.cases = (res.data || []).map(function(c) {
+      // imagingDate が空なら createdAt から推定
+      if (!c.imagingDate && c.createdAt) {
+        c.imagingDate = formatDate(c.createdAt);
+      }
+      return c;
+    });
+    applyFilter();
+    renderTree();
+    render();
+    renderDrafts();
+  } catch (err) {
+    toast('読み込みエラー: ' + err.message, 4000);
+  }
+}
+
+// =====================================================
+// フィルタリング
+// =====================================================
+function applyFilter() {
+  const q = state.searchText.trim().toLowerCase();
+  state.filtered = state.cases.filter(function(c) {
+    // draftは別セクションで表示するので一覧からは除外
+    if (c.status === 'draft') return false;
+    // とみまるモード: タブで pending / reported を分ける
+    if (state.mode === 'tomimaru') {
+      if (state.tomimaruTab === 'pending' && c.status !== 'pending') return false;
+      if (state.tomimaruTab === 'reported' && c.status !== 'reported') return false;
+    }
+    // テキスト検索 (カルテNo / 部位 / ID)
+    if (q) {
+      const hay = (String(c.karteNo || '') + ' ' + String(c.bodyPart || '') + ' ' + String(c.id || '')).toLowerCase();
+      if (hay.indexOf(q) === -1) return false;
+    }
+    // 状態 (とすとすモード用、とみまるモードではタブで既にフィルタ済み)
+    if (state.mode === 'tosutosu' && state.filterStatus !== 'all' && c.status !== state.filterStatus) return false;
+    // 緊急度
+    if (state.filterUrgency === '★★★' && c.urgency !== '★★★') return false;
+    if (state.filterUrgency === '★★' && c.urgency !== '★★' && c.urgency !== '★★★') return false;
+    if (state.filterUrgency === 'imp3' && c.importance !== '★★★') return false;
+    if (state.filterUrgency === 'imp2' && c.importance !== '★★' && c.importance !== '★★★') return false;
+    // 撮像日範囲
+    if (state.dateFrom && c.imagingDate < state.dateFrom) return false;
+    if (state.dateTo && c.imagingDate > state.dateTo) return false;
+    // 年月ツリー選択
+    if (state.selectedYear !== null) {
+      const pd = parseImagingDate(c.imagingDate);
+      if (!pd) return false;
+      if (pd.year !== state.selectedYear) return false;
+      if (state.selectedMonth !== null && pd.month !== state.selectedMonth) return false;
+    }
+    return true;
+  });
+  // 並び順: 新しい→古い
+  //   1) 撮像日降順 (空は最後)
+  //   2) 同日なら依頼日(createdAt)降順
+  //   3) さらに同じなら ID 降順 (CASE-XXXX の数字部分)
+  state.filtered.sort(function(a, b) {
+    const ai = a.imagingDate || '';
+    const bi = b.imagingDate || '';
+    // 撮像日が空のものは常に最後
+    if (!ai && bi) return 1;
+    if (ai && !bi) return -1;
+    if (ai !== bi) return ai < bi ? 1 : -1;
+
+    // 依頼日降順
+    const ac = a.createdAt || '';
+    const bc = b.createdAt || '';
+    if (ac !== bc) return ac < bc ? 1 : -1;
+
+    // ID降順 (CASE-0042 の数字部分)
+    const an = parseInt(String(a.id || '').replace(/\D/g, '')) || 0;
+    const bn = parseInt(String(b.id || '').replace(/\D/g, '')) || 0;
+    return bn - an;
+  });
+  state.page = 1;
+}
+
+// =====================================================
+// 年月ツリー描画
+// =====================================================
+function buildTreeData() {
+  // { year: { month: count } }
+  const tree = {};
+  state.cases.forEach(function(c) {
+    if (c.status === 'draft') return;  // draftはツリーに含めない
+    const pd = parseImagingDate(c.imagingDate);
+    if (!pd) return;
+    if (!tree[pd.year]) tree[pd.year] = {};
+    if (!tree[pd.year][pd.month]) tree[pd.year][pd.month] = 0;
+    tree[pd.year][pd.month]++;
+  });
+  return tree;
+}
+
+function renderTree() {
+  const data = buildTreeData();
+  const treeEl = $('#tree');
+  $('#treeAllCount').textContent = state.cases.filter(function(c){return c.status !== 'draft';}).length;
+
+  const years = Object.keys(data).map(Number).sort(function(a,b){return b-a;});
+
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1;
+
+  treeEl.innerHTML = years.map(function(year) {
+    const months = Object.keys(data[year]).map(Number).sort(function(a,b){return b-a;});
+    const yearTotal = months.reduce(function(s, m){ return s + data[year][m]; }, 0);
+    const expanded = (year === currentYear);
+
+    const monthsHtml = months.map(function(m) {
+      const isActive = (state.selectedYear === year && state.selectedMonth === m);
+      return '<div class="tree-month' + (isActive ? ' active' : '') + '" data-year="' + year + '" data-month="' + m + '">' +
+             '<span>' + m + '月</span>' +
+             '<span class="tree-month-count">' + data[year][m] + '</span>' +
+             '</div>';
+    }).join('');
+
+    return '<div class="tree-year">' +
+           '<div class="tree-year-label' + (expanded ? ' expanded' : '') + '" data-year-toggle="' + year + '">' +
+           '<span class="caret">▶</span>' +
+           '<span>' + year + '年</span>' +
+           '<span class="tree-year-count">' + yearTotal + '</span>' +
+           '</div>' +
+           '<div class="tree-months' + (expanded ? ' expanded' : '') + '" data-year-months="' + year + '">' +
+           monthsHtml +
+           '</div>' +
+           '</div>';
+  }).join('');
+
+  // 年トグル
+  $$('[data-year-toggle]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      const year = parseInt(el.dataset.yearToggle);
+      const monthsEl = treeEl.querySelector('[data-year-months="' + year + '"]');
+      el.classList.toggle('expanded');
+      monthsEl.classList.toggle('expanded');
+    });
+  });
+
+  // 月クリック
+  $$('.tree-month').forEach(function(el) {
+    el.addEventListener('click', function(e) {
+      e.stopPropagation();
+      state.selectedYear = parseInt(el.dataset.year);
+      state.selectedMonth = parseInt(el.dataset.month);
+      $('#treeAll').classList.remove('active');
+      applyFilter();
+      renderTree();
+      render();
+    });
+  });
+}
+
+// =====================================================
+// ケース一覧 描画
+// =====================================================
+function render() {
+  // とみまるモード: タブの件数を更新 (フィルタ前の全体件数)
+  if (state.mode === 'tomimaru') {
+    let pendingCount = 0;
+    let reportedCount = 0;
+    state.cases.forEach(function(c) {
+      if (c.status === 'pending') pendingCount++;
+      else if (c.status === 'reported') reportedCount++;
+    });
+    $('#tabCountPending').textContent = pendingCount;
+    $('#tabCountReported').textContent = reportedCount;
+  }
+
+  // タイトル
+  let title = 'すべて';
+  if (state.selectedYear !== null) {
+    title = state.selectedYear + '年';
+    if (state.selectedMonth !== null) {
+      title += ' ' + state.selectedMonth + '月';
+    }
+  }
+  $('#casesTitle').textContent = title;
+  $('#casesMeta').textContent = state.filtered.length + '件';
+
+  const listEl = $('#caseList');
+  if (state.filtered.length === 0) {
+    listEl.innerHTML = '<div class="empty-state"><span class="paw">🐾</span>該当するケースがありません</div>';
+    $('#pagination').style.display = 'none';
+    return;
+  }
+
+  const visible = state.filtered.slice(0, state.page * state.pageSize);
+  listEl.innerHTML = visible.map(function(c) {
+    const pd = parseImagingDate(c.imagingDate);
+    const md = pd ? (pd.month + '/' + pd.day) : '--';
+    const y = pd ? pd.year : '';
+    const statusBadge = c.status === 'reported'
+      ? '<span class="badge badge-reported">読影済み</span>'
+      : '<span class="badge badge-pending">読影待ち</span>';
+    const question = (c.question || '').replace(/[<>]/g, '');
+    const impN = c.status === 'reported' ? lvNum(c.importance) : 0;
+    const copyBtn = (c.status === 'reported' && c.report)
+      ? '<button class="btn-copy-report" data-copy-case="' + c.id + '" title="所見をコピー (デジカル貼り付け用)">📋 コピー</button>'
+      : '';
+
+    return '<div class="case-card' + (impN >= 2 ? ' imp-' + impN : '') + '" data-case-id="' + c.id + '">' +
+             '<div class="case-date-block">' +
+               '<div class="case-date-md">' + md + '</div>' +
+               '<div class="case-date-y">' + y + '</div>' +
+             '</div>' +
+             '<div class="case-info">' +
+               '<div class="case-row1">' +
+                 '<span class="case-id">' + c.id + '</span>' +
+                 '<span class="case-karte">No.' + (c.karteNo || '-') + '</span>' +
+                 '<span class="case-body-part">/ ' + (c.bodyPart || '-') + '</span>' +
+               '</div>' +
+               '<div class="case-question">' + (question || '（依頼内容なし）') + '</div>' +
+             '</div>' +
+             '<div class="case-badges">' +
+               statusBadge +
+               reqChip(c) +
+               impChip(c) +
+               copyBtn +
+             '</div>' +
+           '</div>';
+  }).join('');
+
+  $$('[data-case-id]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      openDetail(el.dataset.caseId);
+    });
+  });
+  // v0.6.10: 一覧から直接コピー (カードを開かない)
+  $$('[data-copy-case]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const c = state.cases.find(function(x){ return x.id === btn.dataset.copyCase; });
+      if (c) copyText(reportCopyText(c), btn);
+    });
+  });
+
+  $('#pagination').style.display = state.filtered.length > visible.length ? 'flex' : 'none';
+}
+
+// =====================================================
+// 下書きキュー (v0.6)
+// =====================================================
+function renderDrafts() {
+  const section = $('#draftSection');
+  
+  // とみまる(読影医)モードでは下書きキューを非表示
+  if (state.mode === 'tomimaru') {
+    section.style.display = 'none';
+    return;
+  }
+  
+  const drafts = state.cases.filter(function(c){ return c.status === 'draft'; })
+    .sort(function(a, b) {
+      // 撮像日降順
+      const ai = a.imagingDate || '';
+      const bi = b.imagingDate || '';
+      if (ai !== bi) return ai < bi ? 1 : -1;
+      const an = parseInt(String(a.id || '').replace(/\D/g, '')) || 0;
+      const bn = parseInt(String(b.id || '').replace(/\D/g, '')) || 0;
+      return bn - an;
+    });
+
+  if (drafts.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+  $('#draftCount').textContent = '⚠ ' + drafts.length + '件 未送信';
+
+  const listEl = $('#draftList');
+  
+  // 既に編集中の下書きカードがあれば、それは保護する
+  // 全削除→再生成ではなく、追加・削除分だけ更新する差分レンダリング
+  const existingCards = {};
+  listEl.querySelectorAll('.draft-card').forEach(function(card) {
+    existingCards[card.dataset.draftId] = card;
+  });
+  
+  // 新しい下書きIDのセット
+  const newDraftIds = new Set(drafts.map(function(d){ return d.id; }));
+  
+  // 削除された(送信済み・削除済み)下書きカードをDOMから除去
+  Object.keys(existingCards).forEach(function(id) {
+    if (!newDraftIds.has(id)) {
+      existingCards[id].remove();
+      state.editingDrafts.delete(id);
+      delete state.draftLocalValues[id];
+    }
+  });
+
+  // 各下書きについて、新規追加 or 更新
+  const fragment = document.createDocumentFragment();
+  drafts.forEach(function(d) {
+    const existing = existingCards[d.id];
+    if (existing && state.editingDrafts.has(d.id)) {
+      // 編集中なので何もしない (DOMはそのまま、入力値も維持)
+      return;
+    }
+    if (existing) {
+      // 編集中でない既存カード: 値だけ最新に反映 (DOM自体は維持してフォーカス保持)
+      updateDraftCardValues(existing, d);
+      return;
+    }
+    // 新規カードを作成
+    const newCardHtml = buildDraftCardHtml(d);
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = newCardHtml;
+    const newCard = wrapper.firstElementChild;
+    fragment.appendChild(newCard);
+  });
+  
+  if (fragment.children.length > 0) {
+    listEl.appendChild(fragment);
+  }
+
+  // 新規追加されたカードにイベントバインド
+  listEl.querySelectorAll('.draft-card').forEach(function(card) {
+    if (card.dataset.bound === '1') return;  // 既にバインド済み
+    card.dataset.bound = '1';
+    bindDraftCardEvents(card);
+  });
+}
+
+// 下書きカードのHTMLを生成
+function buildDraftCardHtml(d) {
+  const compareHtml = d.compareUrls && d.compareUrls.length
+    ? '<div class="compare-section">' +
+        '<span class="label">📎 比較画像 (過去Study) ' + d.compareUrls.length + '件</span>' +
+        '<div class="compare-thumbs">' +
+          d.compareUrls.map(function(url, i){
+            return '<a href="' + url + '" target="_blank" rel="noopener">過去画像 ' + (i+1) + '</a>';
+          }).join('') +
+        '</div>' +
+      '</div>'
+    : '';
+
+  return '<div class="draft-card" data-draft-id="' + escapeHtml(d.id) + '">' +
+           '<div class="draft-card-head">' +
+             '<div class="draft-meta">' +
+               '<span class="id">' + escapeHtml(d.id) + '</span>' +
+               '<input type="text" class="draft-karte" data-field="karteNo" value="' + escapeAttr(d.karteNo||'') + '" style="font-weight:700;border:1px solid var(--line);padding:3px 6px;border-radius:3px;width:100px;font-size:13px">' +
+               '<input type="text" class="draft-bodypart" data-field="bodyPart" value="' + escapeAttr(d.bodyPart||'') + '" style="border:1px solid var(--line);padding:3px 6px;border-radius:3px;width:120px;font-size:13px">' +
+               '<input type="date" class="draft-date" data-field="imagingDate" value="' + escapeAttr(d.imagingDate||'') + '" style="border:1px solid var(--line);padding:3px 6px;border-radius:3px;font-size:13px">' +
+             '</div>' +
+             '<span class="draft-file-count">📁 ' + (d.fileUrls?d.fileUrls.length:0) + '枚</span>' +
+           '</div>' +
+           '<div class="draft-form">' +
+             '<textarea data-field="question" placeholder="依頼内容・臨床経過・既往歴など">' + escapeHtml(d.question||'') + '</textarea>' +
+             '<div class="draft-urgency-mini">' +
+               '<label><input type="radio" name="urg-' + escapeAttr(d.id) + '" value="★"' + (d.urgency==='★'||!d.urgency?' checked':'') + '><span>★</span></label>' +
+               '<label><input type="radio" name="urg-' + escapeAttr(d.id) + '" value="★★"' + (d.urgency==='★★'?' checked':'') + '><span>★★</span></label>' +
+               '<label><input type="radio" name="urg-' + escapeAttr(d.id) + '" value="★★★"' + (d.urgency==='★★★'?' checked':'') + '><span>★★★</span></label>' +
+             '</div>' +
+           '</div>' +
+           compareHtml +
+           '<div class="draft-actions">' +
+             '<div class="draft-actions-left">' +
+               (d.fileUrls && d.fileUrls.length ? '<a class="draft-link" href="' + d.fileUrls[0] + '" target="_blank" rel="noopener">📷 画像確認</a>' : '') +
+             '</div>' +
+             '<div class="draft-actions-right">' +
+               '<button class="btn-draft-delete" data-action="delete">削除</button>' +
+               '<button class="btn-draft-send" data-action="send">🚀 とみまるに送信</button>' +
+             '</div>' +
+           '</div>' +
+         '</div>';
+}
+
+// 既存カードの値をサーバー側最新で更新 (フォーカス保護)
+function updateDraftCardValues(card, d) {
+  const fields = card.querySelectorAll('[data-field]');
+  fields.forEach(function(el) {
+    const name = el.dataset.field;
+    // フォーカスがある(編集中)のフィールドは絶対上書きしない
+    if (el === document.activeElement) return;
+    const v = d[name] || '';
+    if (el.value !== v) el.value = v;
+  });
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function escapeAttr(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// 下書きカードに各種イベントをバインド
+function bindDraftCardEvents(card) {
+  const draftId = card.dataset.draftId;
+
+  // 編集中フラグ: input/change/focus が起きたら「編集中」とマーク
+  card.querySelectorAll('input, textarea, select').forEach(function(el) {
+    const markEditing = function() {
+      state.editingDrafts.add(draftId);
+    };
+    el.addEventListener('focus', markEditing);
+    el.addEventListener('input', markEditing);
+    el.addEventListener('change', markEditing);
+  });
+
+  card.querySelector('[data-action="send"]').addEventListener('click', function() {
+    sendDraft(draftId, card);
+  });
+  card.querySelector('[data-action="delete"]').addEventListener('click', function() {
+    deleteDraft(draftId);
+  });
+}
+
+async function sendDraft(draftId, cardEl) {
+  // フォームの値を収集
+  const karteNo = cardEl.querySelector('[data-field="karteNo"]').value.trim();
+  const bodyPart = cardEl.querySelector('[data-field="bodyPart"]').value.trim();
+  const imagingDate = cardEl.querySelector('[data-field="imagingDate"]').value;
+  const question = cardEl.querySelector('[data-field="question"]').value.trim();
+  const urgency = cardEl.querySelector('input[name="urg-' + draftId + '"]:checked').value;
+
+  if (!karteNo) { toast('カルテNoを入力してください'); return; }
+  if (!bodyPart) { toast('部位を入力してください'); return; }
+  if (!imagingDate) { toast('撮像日を入力してください'); return; }
+
+  const btn = cardEl.querySelector('[data-action="send"]');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>送信中...';
+
+  try {
+    const res = await apiPost({
+      action: 'promoteDraft',
+      id: draftId,
+      karteNo: karteNo,
+      bodyPart: bodyPart,
+      imagingDate: imagingDate,
+      question: question,
+      urgency: urgency,
+    });
+    if (!res.success) throw new Error(res.error);
+    toast('✅ ' + draftId + ' をとみまるに送信しました');
+    // 編集中フラグを解除
+    state.editingDrafts.delete(draftId);
+    delete state.draftLocalValues[draftId];
+    await loadCases();
+  } catch (err) {
+    toast('エラー: ' + err.message, 4000);
+    btn.disabled = false;
+    btn.textContent = '🚀 とみまるに送信';
+  }
+}
+
+async function deleteDraft(draftId) {
+  if (!confirm(draftId + ' を削除しますか?\n(Driveにアップロードされた画像は残ります)')) return;
+  try {
+    const res = await apiPost({ action: 'deleteDraft', id: draftId });
+    if (!res.success) throw new Error(res.error);
+    toast('🗑 削除しました');
+    state.editingDrafts.delete(draftId);
+    delete state.draftLocalValues[draftId];
+    await loadCases();
+  } catch (err) {
+    toast('エラー: ' + err.message, 4000);
+  }
+}
+
+// =====================================================
+// 詳細モーダル
+// =====================================================
+function openDetail(id) {
+  const c = state.cases.find(function(x){ return x.id === id; });
+  if (!c) return;
+
+  $('#detailTitle').textContent = c.id + ' / No.' + (c.karteNo || '-');
+
+  const filesHtml = (c.fileUrls && c.fileUrls.length)
+    ? '<div class="images-grid">' + c.fileUrls.map(function(url) {
+        const isDcm = /\.dcm($|\?)/i.test(url);
+        return '<div class="image-thumb" data-img-url="' + url + '">' +
+                 (isDcm ? '<span>📄 DICOM</span>' : '<img loading="lazy" src="' + url + '" alt="">') +
+                 '<span class="ext">' + (isDcm ? 'DCM' : 'IMG') + '</span>' +
+               '</div>';
+      }).join('') + '</div>'
+    : '<div style="color:var(--ink-mute);font-size:12px">画像なし</div>';
+
+  // 比較画像 (過去Study)
+  const compareHtml = (c.compareUrls && c.compareUrls.length)
+    ? '<div class="detail-section">' +
+        '<div class="detail-label">📎 比較画像 (過去Study)</div>' +
+        '<div class="images-grid">' +
+          c.compareUrls.map(function(url) {
+            const isDcm = /\.dcm($|\?)/i.test(url);
+            // ファイル名から日付っぽい部分を抽出 ([COMPARE_2026-03-15]_xxx)
+            const m = decodeURIComponent(url).match(/COMPARE[_-](\d{4}-\d{2}-\d{2})/);
+            const dateLabel = m ? m[1] : '過去';
+            return '<div class="image-thumb" data-img-url="' + url + '" title="' + dateLabel + '">' +
+                     (isDcm ? '<span style="font-size:10px;text-align:center;line-height:1.4">📄 DICOM<br>' + dateLabel + '</span>' : '<img loading="lazy" src="' + url + '" alt="">') +
+                     '<span class="ext">' + dateLabel + '</span>' +
+                   '</div>';
+          }).join('') +
+        '</div>' +
+      '</div>'
+    : '';
+
+  let body = '<div class="detail-section">' +
+               '<div class="detail-grid">' +
+                 '<div><div class="detail-label">カルテNo</div><div class="detail-value">' + (c.karteNo || '-') + '</div></div>' +
+                 '<div><div class="detail-label">部位</div><div class="detail-value">' + (c.bodyPart || '-') + '</div></div>' +
+                 '<div><div class="detail-label">撮像日</div><div class="detail-value">' + (c.imagingDate || '-') + '</div></div>' +
+                 '<div><div class="detail-label">依頼日</div><div class="detail-value">' + (c.createdAt || '-') + '</div></div>' +
+                 '<div><div class="detail-label">⚡ 依頼緊急度</div><div class="detail-value">' + reqChip(c) + '</div></div>' +
+                 '<div><div class="detail-label">🔍 読影重要度</div><div class="detail-value">' + impChip(c) + '</div></div>' +
+                 '<div><div class="detail-label">状態</div><div class="detail-value">' + (c.status === 'reported' ? '読影済み' : '読影待ち') + '</div></div>' +
+               '</div>' +
+             '</div>' +
+             '<div class="detail-section">' +
+               '<div class="detail-label">依頼内容</div>' +
+               '<div class="detail-value" style="white-space:pre-wrap">' + (c.question || '-') + '</div>' +
+             '</div>' +
+             '<div class="detail-section">' +
+               '<div class="detail-label">画像</div>' +
+               filesHtml +
+             '</div>' +
+             compareHtml;
+
+  // 読影モード or 既に所見ありの表示
+  if (state.mode === 'tomimaru') {
+    // 既存のアノテーション画像をサムネ表示
+    const existingAnnotationsHtml = (c.annotationUrls && c.annotationUrls.length)
+      ? '<div class="annotation-existing">' +
+          c.annotationUrls.map(function(url, i) {
+            return '<div class="annotation-thumb" data-existing-url="' + url + '">' +
+                     '<img loading="lazy" src="' + url + '" alt="">' +
+                     '<button class="annotation-remove-existing" data-remove-existing="' + i + '" title="削除">×</button>' +
+                   '</div>';
+          }).join('') +
+        '</div>'
+      : '';
+    
+    body += '<div class="detail-section">' +
+              '<div class="detail-label">読影所見</div>' +
+              '<div class="form-field" style="margin-top:6px">' +
+                '<label>🔍 読影重要度 <span class="req">*</span></label>' +
+                '<div class="urgency-radio">' +
+                  '<label><input type="radio" name="reportImportance" value="★"' + (c.importance==='★'?' checked':'') + '><span>★ 特記なし</span></label>' +
+                  '<label><input type="radio" name="reportImportance" value="★★"' + (c.importance==='★★'?' checked':'') + '><span>★★ 要経過観察</span></label>' +
+                  '<label><input type="radio" name="reportImportance" value="★★★"' + (c.importance==='★★★'?' checked':'') + '><span>★★★ 要精査</span></label>' +
+                '</div>' +
+                '<div class="lvl-legend">所見の重要度を選んでください（依頼の緊急度 ' + reqChip(c) + ' とは別に記録されます）</div>' +
+              '</div>' +
+              '<textarea id="reportText" placeholder="所見をご記入ください">' + (c.report || '') + '</textarea>' +
+            '</div>' +
+            '<div class="detail-section">' +
+              '<div class="detail-label">🖼 アノテーション画像 (任意)</div>' +
+              '<div class="annotation-hint">所見と一緒に送る画像を貼り付けられます。所見にマーキングしたJPEG/PNG画像をどうぞ。<br>' +
+              '・ドラッグ&ドロップ ・⌘+V でクリップボードから貼り付け ・ボタンで選択</div>' +
+              existingAnnotationsHtml +
+              '<div class="annotation-drop" id="annotationDrop" tabindex="0">' +
+                '<div>📎 ここに画像をドロップ または ⌘+V で貼り付け</div>' +
+                '<div class="annotation-hint-small">クリックでファイル選択も可</div>' +
+              '</div>' +
+              '<input type="file" id="annotationInput" multiple accept="image/jpeg,image/png,.jpg,.jpeg,.png" style="display:none">' +
+              '<div id="annotationPendingList" class="annotation-list"></div>' +
+            '</div>';
+  } else if (c.report) {
+    // 既存所見の表示
+    const rImp = lvNum(c.importance);
+    body += '<div class="detail-section">' +
+              '<div class="report-head">' +
+                '<div class="detail-label" style="margin:0">読影所見 (' + (c.reportDate || '') + ')</div>' +
+                '<button class="btn-copy-report" id="btnCopyReportInline">📋 所見をコピー</button>' +
+              '</div>' +
+              '<div class="report-text' + (rImp >= 2 ? ' imp-' + rImp : '') + '">' + (c.report || '').replace(/[<>]/g, '') + '</div>' +
+            '</div>';
+    // アノテーション画像があれば表示
+    if (c.annotationUrls && c.annotationUrls.length) {
+      body += '<div class="detail-section">' +
+                '<div class="detail-label">🖼 アノテーション画像</div>' +
+                '<div class="images-grid">' +
+                  c.annotationUrls.map(function(url) {
+                    return '<div class="image-thumb" data-img-url="' + url + '">' +
+                             '<img loading="lazy" src="' + url + '" alt="">' +
+                             '<span class="ext">注釈</span>' +
+                           '</div>';
+                  }).join('') +
+                '</div>' +
+              '</div>';
+    }
+  }
+
+  $('#detailBody').innerHTML = body;
+
+  // フッターボタン
+  let footer = '<button class="btn-secondary" data-close="modalDetail">閉じる</button>';
+  if (state.mode === 'tomimaru') {
+    footer += '<button class="btn-primary" id="btnSubmitReport" data-case-id="' + c.id + '">' +
+              (c.status === 'reported' ? '✏️ 所見を更新' : '所見を送信') + '</button>';
+  } else if (c.status === 'reported') {
+    footer += '<button class="btn-primary" id="btnCopyReport">📋 所見をコピー</button>';
+  }
+  $('#detailFooter').innerHTML = footer;
+
+  // 動的生成されたフッター内の [data-close] にイベントリスナーをバインド
+  $('#detailFooter').querySelectorAll('[data-close]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      const target = el.dataset.close;
+      $('#' + target).style.display = 'none';
+    });
+  });
+
+  // ライトボックス / DICOM はDriveで開く
+  $$('[data-img-url]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      const url = el.dataset.imgUrl;
+      // DICOM や Drive URL はそのまま新規タブで開く
+      // (Driveが「ダウンロード」または専用ビューアで開いてくれる)
+      if (/\.dcm($|\?)/i.test(url) || /drive\.google\.com/.test(url)) {
+        window.open(url, '_blank', 'noopener');
+      } else {
+        openLightbox(url);
+      }
+    });
+  });
+
+  // 送信
+  const submitBtn = document.getElementById('btnSubmitReport');
+  if (submitBtn) {
+    submitBtn.addEventListener('click', function() {
+      submitReport(submitBtn.dataset.caseId);
+    });
+  }
+  // コピー
+  ['btnCopyReport', 'btnCopyReportInline'].forEach(function(bid) {
+    const b = document.getElementById(bid);
+    if (b) b.addEventListener('click', function() { copyText(reportCopyText(c), b); });
+  });
+
+  // アノテーション画像処理 (とみまるモードのみ)
+  if (state.mode === 'tomimaru') {
+    state.pendingAnnotations = [];          // [{file, base64}] アップロード予定
+    state.existingAnnotations = (c.annotationUrls || []).slice();  // 既存URLのコピー
+    state.removedAnnotations = [];          // 削除されたURL
+    setupAnnotationHandlers(c.id);
+  }
+
+  $('#modalDetail').style.display = 'flex';
+}
+
+// =====================================================
+// アノテーション画像 (v0.6.3)
+// =====================================================
+function setupAnnotationHandlers(caseId) {
+  const drop = $('#annotationDrop');
+  const input = $('#annotationInput');
+  if (!drop || !input) return;
+
+  drop.addEventListener('click', function() { input.click(); });
+  input.addEventListener('change', function(e) { handleAnnotationFiles(e.target.files); e.target.value = ''; });
+  
+  drop.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    drop.classList.add('drag-over');
+  });
+  drop.addEventListener('dragleave', function() { drop.classList.remove('drag-over'); });
+  drop.addEventListener('drop', function(e) {
+    e.preventDefault();
+    drop.classList.remove('drag-over');
+    handleAnnotationFiles(e.dataTransfer.files);
+  });
+
+  // クリップボードから貼り付け (モーダル内であれば動作)
+  const pasteHandler = function(e) {
+    // モーダルが閉じてたら無視
+    if ($('#modalDetail').style.display === 'none') return;
+    const items = (e.clipboardData || window.clipboardData).items;
+    if (!items) return;
+    const files = [];
+    for (const item of items) {
+      if (item.type.indexOf('image') === 0) {
+        const file = item.getAsFile();
+        if (file) files.push(file);
+      }
+    }
+    if (files.length > 0) {
+      e.preventDefault();
+      handleAnnotationFiles(files);
+    }
+  };
+  // 一度だけ登録
+  if (!state.annotationPasteHandlerAttached) {
+    document.addEventListener('paste', pasteHandler);
+    state.annotationPasteHandlerAttached = true;
+  }
+
+  // 既存アノテーションの削除ボタン
+  document.querySelectorAll('[data-remove-existing]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.removeExisting);
+      const url = state.existingAnnotations[idx];
+      state.removedAnnotations.push(url);
+      state.existingAnnotations.splice(idx, 1);
+      // DOMから即座に削除
+      btn.parentElement.style.display = 'none';
+    });
+  });
+
+  // 既存アノテーションのクリックでライトボックス
+  document.querySelectorAll('[data-existing-url]').forEach(function(el) {
+    el.addEventListener('click', function(e) {
+      if (e.target.dataset.removeExisting !== undefined) return;
+      openLightbox(el.dataset.existingUrl);
+    });
+  });
+}
+
+async function handleAnnotationFiles(files) {
+  const arr = Array.from(files).filter(function(f) {
+    return f.type === 'image/jpeg' || f.type === 'image/png' || /\.(jpe?g|png)$/i.test(f.name);
+  });
+  if (arr.length === 0) {
+    toast('JPEG または PNG 画像のみ対応しています');
+    return;
+  }
+  for (const file of arr) {
+    const base64 = await fileToBase64(file);
+    state.pendingAnnotations.push({ file: file, base64: base64 });
+  }
+  renderAnnotationPendingList();
+}
+
+function renderAnnotationPendingList() {
+  const el = $('#annotationPendingList');
+  if (!el) return;
+  el.innerHTML = state.pendingAnnotations.map(function(item, i) {
+    const previewUrl = 'data:' + (item.file.type || 'image/png') + ';base64,' + item.base64;
+    const sizeKB = Math.round(item.file.size / 1024);
+    return '<div class="annotation-pending">' +
+             '<img src="' + previewUrl + '" alt="">' +
+             '<div class="annotation-pending-info">' +
+               '<div class="name">' + (item.file.name || 'paste-' + Date.now() + '.png') + '</div>' +
+               '<div class="size">' + sizeKB + ' KB</div>' +
+             '</div>' +
+             '<button data-remove-pending="' + i + '" title="取り消し">×</button>' +
+           '</div>';
+  }).join('');
+  el.querySelectorAll('[data-remove-pending]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      state.pendingAnnotations.splice(parseInt(btn.dataset.removePending), 1);
+      renderAnnotationPendingList();
+    });
+  });
+}
+
+// =====================================================
+// v0.6.10: 依頼緊急度 / 読影重要度 の表示とコピー
+// =====================================================
+const REQ_LABEL = { '★': '通常', '★★': 'やや急ぎ', '★★★': '至急' };
+const IMP_LABEL = { '★': '特記なし', '★★': '要経過観察', '★★★': '要精査' };
+function lvNum(stars) { return stars === '★★★' ? 3 : (stars === '★★' ? 2 : (stars === '★' ? 1 : 0)); }
+function reqChip(c) {
+  const st = c.urgency || '★';
+  return '<span class="lvl-chip lvl-req lv' + lvNum(st) + '" title="依頼緊急度 (とすとすが付けた★)">' +
+           '<span class="lvl-k">⚡依頼</span>' + st + ' ' + (REQ_LABEL[st] || '') + '</span>';
+}
+function impChip(c) {
+  if (c.status !== 'reported') return '<span class="lvl-chip lvl-imp lv0" title="読影重要度">🔍 未読影</span>';
+  const st = c.importance || '';
+  if (!st) return '<span class="lvl-chip lvl-imp lv0" title="v0.6.10以前の所見は重要度が記録されていません">🔍 重要度なし</span>';
+  return '<span class="lvl-chip lvl-imp lv' + lvNum(st) + '" title="読影重要度 (とみまる先生が付けた★)">' +
+           '<span class="lvl-k">🔍読影</span>' + st + ' ' + (IMP_LABEL[st] || '') + '</span>';
+}
+function copyText(txt, btn) {
+  const done = function() {
+    toast('📋 コピーしました。デジカルに ⌘V で貼り付けできます');
+    if (btn) {
+      const orig = btn.textContent;
+      btn.classList.add('done'); btn.textContent = '✓ コピー済み';
+      setTimeout(function(){ btn.classList.remove('done'); btn.textContent = orig; }, 1800);
+    }
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(txt).then(done).catch(function(){ fallbackCopy(txt) && done(); });
+  } else if (fallbackCopy(txt)) { done(); }
+}
+function fallbackCopy(txt) {
+  const ta = document.createElement('textarea');
+  ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) {}
+  document.body.removeChild(ta);
+  if (!ok) toast('コピーに失敗しました', 3000);
+  return ok;
+}
+// デジカル貼り付け用: 見出し1行 + 所見本文
+function reportCopyText(c) {
+  return '【読影所見】撮像日 ' + (c.imagingDate || '-') + ' ' + (c.bodyPart || '') + '\n' + (c.report || '');
+}
+
+async function submitReport(caseId) {
+  const reportText = document.getElementById('reportText').value.trim();
+  if (!reportText) {
+    toast('所見を入力してください');
+    return;
+  }
+  const impEl = document.querySelector('input[name="reportImportance"]:checked');
+  if (!impEl) {
+    toast('🔍 読影重要度を選んでください');
+    return;
+  }
+  const importance = impEl.value;
+  const btn = document.getElementById('btnSubmitReport');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>送信中...';
+
+  try {
+    // 1. 新規アノテーション画像をアップロード
+    const newAnnotationUrls = [];
+    for (let i = 0; i < state.pendingAnnotations.length; i++) {
+      const item = state.pendingAnnotations[i];
+      btn.innerHTML = '<span class="spinner"></span>画像アップロード中 (' + (i+1) + '/' + state.pendingAnnotations.length + ')';
+      const fileName = item.file.name || (caseId + '_annotation_' + Date.now() + '.png');
+      const res = await apiPost({
+        action: 'uploadFile',
+        fileName: caseId + '_' + fileName,
+        mimeType: item.file.type || 'image/png',
+        base64: item.base64,
+        subfolder: 'annotations',
+      });
+      if (!res.success) throw new Error('画像アップロード失敗: ' + res.error);
+      newAnnotationUrls.push(res.data.url);
+    }
+    btn.innerHTML = '<span class="spinner"></span>送信中...';
+
+    // 2. 最終的なannotation配列 = 残された既存 + 新規
+    const finalAnnotations = (state.existingAnnotations || []).concat(newAnnotationUrls);
+
+    // 3. 所見送信
+    const res = await apiPost({
+      action: 'submitReport',
+      id: caseId,
+      report: reportText,
+      importance: importance,   // v0.6.10: 依頼緊急度(urgency)は送らない
+      annotationUrls: finalAnnotations,
+    });
+    if (!res.success) throw new Error(res.error);
+    toast('所見を送信しました');
+    state.pendingAnnotations = [];
+    state.existingAnnotations = [];
+    $('#modalDetail').style.display = 'none';
+    await loadCases();
+  } catch (err) {
+    toast('エラー: ' + err.message, 4000);
+    btn.disabled = false;
+    btn.textContent = '所見を送信';
+  }
+}
+
+// =====================================================
+// ライトボックス
+// =====================================================
+function openLightbox(url) {
+  const box = document.createElement('div');
+  box.className = 'lightbox';
+  box.innerHTML = '<button class="lightbox-close">×</button><img src="' + url + '">';
+  box.addEventListener('click', function(e) {
+    if (e.target === box || e.target.classList.contains('lightbox-close')) {
+      document.body.removeChild(box);
+    }
+  });
+  document.body.appendChild(box);
+}
+
+// =====================================================
+// 新規ケース作成
+// =====================================================
+async function handleFiles(files) {
+  const arr = Array.from(files);
+  let detectedDate = null;
+  $('#dicomInfo').style.display = 'none';
+  $('#dateAutoLabel').style.display = 'none';
+
+  for (const file of arr) {
+    const item = { file: file, base64: null, dataUrl: null };
+    if (isDicomFile(file)) {
+      const dt = await extractDicomDate(file);
+      if (dt && !detectedDate) {
+        detectedDate = dt;
+      }
+    }
+    item.base64 = await fileToBase64(file);
+    state.pendingFiles.push(item);
+  }
+
+  if (detectedDate) {
+    $('#newImagingDate').value = detectedDate;
+    $('#dateAutoLabel').style.display = 'inline';
+    $('#dicomInfo').innerHTML = '<div class="dicom-info"><span class="label">DICOM StudyDate を取得:</span> ' + detectedDate + '</div>';
+    $('#dicomInfo').style.display = 'block';
+  }
+
+  renderFileList();
+}
+
+function renderFileList() {
+  const el = $('#fileList');
+  el.innerHTML = state.pendingFiles.map(function(item, i) {
+    const sizeKB = Math.round(item.file.size / 1024);
+    return '<div class="file-item">' +
+             '<span class="name">' + item.file.name + '</span>' +
+             '<span class="size">' + sizeKB + ' KB</span>' +
+             '<button data-remove="' + i + '">×</button>' +
+           '</div>';
+  }).join('');
+  el.querySelectorAll('[data-remove]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      state.pendingFiles.splice(parseInt(btn.dataset.remove), 1);
+      renderFileList();
+    });
+  });
+}
+
+async function submitNewCase() {
+  const karteNo = $('#newKarteNo').value.trim();
+  const bodyPart = $('#newBodyPart').value.trim();
+  const imagingDate = $('#newImagingDate').value;
+  const question = $('#newQuestion').value.trim();
+  const urgency = document.querySelector('input[name="newUrgency"]:checked').value;
+
+  if (!karteNo || !bodyPart) { toast('カルテNoと部位は必須です'); return; }
+  if (!imagingDate) { toast('撮像日は必須です'); return; }
+  if (state.pendingFiles.length === 0) { toast('画像ファイルを選択してください'); return; }
+
+  const btn = $('#btnSubmitCase');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>送信中...';
+
+  try {
+    // 1. ファイルアップロード
+    const fileUrls = [];
+    for (const item of state.pendingFiles) {
+      const res = await apiPost({
+        action: 'uploadFile',
+        fileName: item.file.name,
+        mimeType: item.file.type || 'application/octet-stream',
+        base64: item.base64,
+      });
+      if (!res.success) throw new Error('ファイルアップロード失敗: ' + res.error);
+      fileUrls.push(res.data.url);
+    }
+    // 2. ケース作成
+    const res = await apiPost({
+      action: 'createCase',
+      karteNo: karteNo,
+      bodyPart: bodyPart,
+      imagingDate: imagingDate,
+      question: question,
+      urgency: urgency,
+      fileUrls: fileUrls,
+    });
+    if (!res.success) throw new Error(res.error);
+
+    toast('依頼を送信しました: ' + res.data.id);
+    closeCreateModal();
+    await loadCases();
+  } catch (err) {
+    toast('エラー: ' + err.message, 5000);
+    btn.disabled = false;
+    btn.textContent = '依頼を送信';
+  }
+}
+
+function closeCreateModal() {
+  $('#modalCreate').style.display = 'none';
+  $('#newKarteNo').value = '';
+  $('#newBodyPart').value = '';
+  $('#newImagingDate').value = todayStr();
+  $('#newQuestion').value = '';
+  state.pendingFiles = [];
+  renderFileList();
+  $('#dicomInfo').style.display = 'none';
+  $('#dateAutoLabel').style.display = 'none';
+  $('#btnSubmitCase').disabled = false;
+  $('#btnSubmitCase').textContent = '依頼を送信';
+}
+
+// =====================================================
+// イベントバインド
+// =====================================================
+$('#modeTosutosu').addEventListener('click', function() {
+  state.mode = 'tosutosu';
+  $('#modeTosutosu').classList.add('active');
+  $('#modeTomimaru').classList.remove('active');
+  $('#btnNewCase').style.display = 'block';
+  $('#tomimaruTabs').style.display = 'none';
+  $('#earningsBanner').style.display = 'none';
+  $('#earningsHistory').style.display = 'none';
+  applyThemeForCurrentMode();
+  renderDrafts();
+  applyFilter();
+  render();
+});
+$('#modeTomimaru').addEventListener('click', function() {
+  state.mode = 'tomimaru';
+  $('#modeTomimaru').classList.add('active');
+  $('#modeTosutosu').classList.remove('active');
+  $('#btnNewCase').style.display = 'none';
+  $('#tomimaruTabs').style.display = 'flex';
+  $('#earningsBanner').style.display = 'block';
+  $('#earningsHistory').style.display = 'block';
+  applyThemeForCurrentMode();
+  renderDrafts();
+  loadEarnings();  // お小遣い情報をロード
+  applyFilter();
+  render();
+});
+
+// とみまるタブ切替
+$$('.tomimaru-tab').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    state.tomimaruTab = tab.dataset.tab;
+    $$('.tomimaru-tab').forEach(function(t) { t.classList.remove('active'); });
+    tab.classList.add('active');
+    state.page = 1;
+    applyFilter();
+    render();
+  });
+});
+
+// 検索
+$('#searchText').addEventListener('input', function(e) {
+  state.searchText = e.target.value;
+  applyFilter(); render();
+});
+$('#filterStatus').addEventListener('change', function(e) {
+  state.filterStatus = e.target.value;
+  applyFilter(); render();
+});
+$('#filterUrgency').addEventListener('change', function(e) {
+  state.filterUrgency = e.target.value;
+  applyFilter(); render();
+});
+$('#dateFrom').addEventListener('change', function(e) {
+  state.dateFrom = e.target.value;
+  applyFilter(); render();
+});
+$('#dateTo').addEventListener('change', function(e) {
+  state.dateTo = e.target.value;
+  applyFilter(); render();
+});
+$('#btnClearFilter').addEventListener('click', function() {
+  state.searchText = ''; state.filterStatus = 'all'; state.filterUrgency = 'all';
+  state.dateFrom = ''; state.dateTo = '';
+  $('#searchText').value = ''; $('#filterStatus').value = 'all'; $('#filterUrgency').value = 'all';
+  $('#dateFrom').value = ''; $('#dateTo').value = '';
+  applyFilter(); render();
+});
+
+// ツリー: すべて
+$('#treeAll').addEventListener('click', function() {
+  state.selectedYear = null;
+  state.selectedMonth = null;
+  $('#treeAll').classList.add('active');
+  $$('.tree-month.active').forEach(function(el){ el.classList.remove('active'); });
+  applyFilter(); render();
+});
+
+// ページネーション
+$('#btnMore').addEventListener('click', function() {
+  state.page++; render();
+});
+
+// 新規ケース
+$('#btnNewCase').addEventListener('click', function() {
+  $('#newImagingDate').value = todayStr();
+  $('#modalCreate').style.display = 'flex';
+});
+$$('[data-close]').forEach(function(el) {
+  el.addEventListener('click', function() {
+    const target = el.dataset.close;
+    if (target === 'modalCreate') {
+      closeCreateModal();
+    } else {
+      $('#' + target).style.display = 'none';
+    }
+  });
+});
+$('#modalCreate').addEventListener('click', function(e) {
+  if (e.target === $('#modalCreate')) closeCreateModal();
+});
+$('#modalDetail').addEventListener('click', function(e) {
+  if (e.target === $('#modalDetail')) $('#modalDetail').style.display = 'none';
+});
+
+// ファイル
+$('#fileDrop').addEventListener('click', function() { $('#fileInput').click(); });
+$('#fileInput').addEventListener('change', function(e) { handleFiles(e.target.files); e.target.value = ''; });
+$('#fileDrop').addEventListener('dragover', function(e) {
+  e.preventDefault();
+  $('#fileDrop').classList.add('drag-over');
+});
+$('#fileDrop').addEventListener('dragleave', function() { $('#fileDrop').classList.remove('drag-over'); });
+$('#fileDrop').addEventListener('drop', function(e) {
+  e.preventDefault();
+  $('#fileDrop').classList.remove('drag-over');
+  handleFiles(e.dataTransfer.files);
+});
+
+$('#btnSubmitCase').addEventListener('click', submitNewCase);
+
+// 下書きキューの折りたたみ
+function toggleDraftSection() {
+  const section = $('#draftSection');
+  const list = $('#draftList');
+  const btn = $('#btnDraftToggle');
+  if (section.classList.contains('collapsed')) {
+    section.classList.remove('collapsed');
+    list.classList.remove('collapsed');
+    btn.textContent = '折りたたむ';
+  } else {
+    section.classList.add('collapsed');
+    list.classList.add('collapsed');
+    btn.textContent = '展開';
+  }
+}
+$('#btnDraftToggle').addEventListener('click', function(e) {
+  e.stopPropagation();
+  toggleDraftSection();
+});
+// ヘッダー全体クリックでも展開/折りたたみ
+$('#draftHeader').addEventListener('click', function(e) {
+  // ボタン自体のクリックは上で処理されているので、ヘッダー領域のクリックのみ
+  if (e.target.id === 'btnDraftToggle') return;
+  toggleDraftSection();
+});
+
+// =====================================================
+// v0.6.4: お小遣い & 設定
+// =====================================================
+async function loadEarnings() {
+  try {
+    const res = await apiGet('getEarnings');
+    if (!res.success) return;
+    state.earnings = res.data;
+    renderEarnings();
+  } catch (err) {
+    console.error('loadEarnings failed', err);
+  }
+}
+
+function renderEarnings() {
+  const e = state.earnings;
+  if (!e) return;
+  
+  // 今月バナー
+  const cur = e.current;
+  if (cur) {
+    const [yy, mm] = cur.yearMonth.split('-');
+    $('#earningsMonth').textContent = parseInt(mm) + '月のおこづかい ♪';
+    $('#earningsAmount').textContent = '¥' + (cur.total).toLocaleString();
+    const subParts = [];
+    subParts.push(cur.count + '件 × ¥' + e.unitPrice);
+    if (cur.bonus !== 0) subParts.push((cur.bonus > 0 ? '+' : '') + '¥' + cur.bonus + ' ボーナス');
+    $('#earningsSubLabel').textContent = subParts.join(' / ');
+  }
+
+  // 履歴 (今月を除外、降順で表示)
+  const nowYm = new Date().toISOString().slice(0, 7);
+  const past = (e.months || []).filter(function(m) { return m.yearMonth !== nowYm; });
+  if (past.length === 0) {
+    $('#earningsHistoryList').innerHTML = '<div class="empty-state" style="padding:8px;font-size:11px">まだ履歴がありません</div>';
+  } else {
+    $('#earningsHistoryList').innerHTML = past.map(function(m) {
+      const [yy, mm] = m.yearMonth.split('-');
+      return '<div class="earnings-month-row">' +
+               '<span class="ym">' + yy + '/' + mm + '</span>' +
+               '<span><span class="cnt">' + m.count + '件</span>' +
+               '<span class="amt">¥' + (m.total).toLocaleString() + '</span></span>' +
+             '</div>';
+    }).join('');
+  }
+}
+
+async function loadSettings() {
+  try {
+    const res = await apiGet('getSettings');
+    if (!res.success) return;
+    state.settings = res.data;
+  } catch (err) {
+    console.error('loadSettings failed', err);
+  }
+}
+
+function openSettingsModal() {
+  loadSettings().then(function() {
+    const s = state.settings;
+    $('#settingUnitPrice').value = s.unitPrice || 300;
+    $('#settingContractUrl').value = s.contractUrl || '';
+    $('#settingMemo').value = s.memo || '';
+    renderContractPreview();
+    renderBonusList();
+    setupThemeSelectorUI();  // テーマ選択UIの初期化
+    $('#modalSettings').style.display = 'flex';
+  });
+}
+
+function renderContractPreview() {
+  const url = $('#settingContractUrl').value.trim();
+  const el = $('#settingContractPreview');
+  if (url) {
+    el.innerHTML = '<a href="' + url + '" target="_blank" rel="noopener" class="btn-secondary" style="display:inline-block;text-decoration:none">📄 契約書を開く</a>';
+  } else {
+    el.innerHTML = '';
+  }
+}
+
+function renderBonusList() {
+  const bonuses = state.settings.bonuses || [];
+  const el = $('#bonusList');
+  if (bonuses.length === 0) {
+    el.innerHTML = '<div class="annotation-hint-small">まだボーナスがありません</div>';
+    return;
+  }
+  el.innerHTML = bonuses.map(function(b, i) {
+    return '<div class="bonus-row" data-bonus-index="' + i + '">' +
+             '<input type="text" placeholder="2026-05" value="' + (b.yearMonth || '') + '" data-field="yearMonth">' +
+             '<input type="number" placeholder="500" value="' + (b.amount || 0) + '" data-field="amount">' +
+             '<input type="text" placeholder="記念ボーナス等" value="' + (b.note || '') + '" data-field="note">' +
+             '<button class="bonus-remove" data-remove-bonus="' + i + '" title="削除">×</button>' +
+           '</div>';
+  }).join('');
+  // 削除ボタン
+  el.querySelectorAll('[data-remove-bonus]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const idx = parseInt(btn.dataset.removeBonus);
+      collectBonusFormToState();
+      state.settings.bonuses.splice(idx, 1);
+      renderBonusList();
+    });
+  });
+}
+
+function collectBonusFormToState() {
+  // フォーム入力値をstate.settings.bonusesに反映
+  const rows = document.querySelectorAll('.bonus-row');
+  state.settings.bonuses = [];
+  rows.forEach(function(row) {
+    const ym = row.querySelector('[data-field="yearMonth"]').value.trim();
+    const amt = parseFloat(row.querySelector('[data-field="amount"]').value) || 0;
+    const note = row.querySelector('[data-field="note"]').value.trim();
+    if (ym) state.settings.bonuses.push({ yearMonth: ym, amount: amt, note: note });
+  });
+}
+
+async function saveSettings() {
+  collectBonusFormToState();
+  const btn = $('#btnSaveSettings');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>保存中...';
+  try {
+    const res = await apiPost({
+      action: 'updateSettings',
+      unitPrice: parseInt($('#settingUnitPrice').value) || 300,
+      contractUrl: $('#settingContractUrl').value.trim(),
+      memo: $('#settingMemo').value,
+      bonuses: state.settings.bonuses,
+    });
+    if (!res.success) throw new Error(res.error);
+    toast('設定を保存しました');
+    $('#modalSettings').style.display = 'none';
+    if (state.mode === 'tomimaru') {
+      await loadEarnings();
+    }
+  } catch (err) {
+    toast('エラー: ' + err.message, 4000);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '💾 保存';
+  }
+}
+
+$('#btnOpenSettings').addEventListener('click', openSettingsModal);
+$('#btnOpenSettingsHeader').addEventListener('click', openSettingsModal);
+$('#btnSaveSettings').addEventListener('click', saveSettings);
+$('#btnAddBonus').addEventListener('click', function() {
+  collectBonusFormToState();
+  const nowYm = new Date().toISOString().slice(0, 7);
+  state.settings.bonuses.push({ yearMonth: nowYm, amount: 0, note: '' });
+  renderBonusList();
+});
+$('#settingContractUrl').addEventListener('input', renderContractPreview);
+
+// =====================================================
+// v0.6.5: テーマ切替
+// =====================================================
+const VALID_THEMES = ['warmtea', 'zen', 'pop'];
+
+function loadThemesFromStorage() {
+  try {
+    const t = localStorage.getItem('tomimaru_themes');
+    if (t) {
+      const parsed = JSON.parse(t);
+      if (VALID_THEMES.indexOf(parsed.tosutosu) >= 0) state.themes.tosutosu = parsed.tosutosu;
+      if (VALID_THEMES.indexOf(parsed.tomimaru) >= 0) state.themes.tomimaru = parsed.tomimaru;
+    }
+  } catch (e) {}
+}
+
+function saveThemesToStorage() {
+  try { localStorage.setItem('tomimaru_themes', JSON.stringify(state.themes)); } catch (e) {}
+}
+
+function applyTheme(themeName) {
+  if (VALID_THEMES.indexOf(themeName) < 0) themeName = 'warmtea';
+  VALID_THEMES.forEach(function(t) { document.body.classList.remove('theme-' + t); });
+  document.body.classList.add('theme-' + themeName);
+}
+
+function applyThemeForCurrentMode() {
+  applyTheme(state.themes[state.mode]);
+}
+
+function setupThemeSelectorUI() {
+  // モーダル内のラジオの初期選択 + クリック処理
+  const currentTheme = state.themes[state.mode] || 'warmtea';
+  $$('.theme-option').forEach(function(opt) {
+    const t = opt.dataset.theme;
+    const input = opt.querySelector('input[type="radio"]');
+    if (t === currentTheme) {
+      opt.classList.add('selected');
+      input.checked = true;
+    } else {
+      opt.classList.remove('selected');
+      input.checked = false;
+    }
+  });
+}
+
+// テーマ選択時の即時反映 (イベント委譲)
+document.addEventListener('change', function(e) {
+  if (e.target.name === 'themeChoice') {
+    const newTheme = e.target.value;
+    state.themes[state.mode] = newTheme;
+    saveThemesToStorage();
+    applyTheme(newTheme);
+    // UI更新
+    $$('.theme-option').forEach(function(opt) {
+      if (opt.dataset.theme === newTheme) opt.classList.add('selected');
+      else opt.classList.remove('selected');
+    });
+  }
+});
+
+// 起動時にテーマを適用
+loadThemesFromStorage();
+applyTheme(state.themes.tosutosu);  // 初期はとすとすモードなので
+
+// =====================================================
+// 起動
+// =====================================================
+loadCases();
+
+// 30秒ごとに自動更新 (下書きが追加されるのを検出するため)
+// ただし、何かのモーダルが開いている時はスキップ (入力中のフォームを守る)
+setInterval(function() {
+  // モーダルが開いていたら自動更新をスキップ
+  const anyModalOpen =
+    ($('#modalDetail').style.display !== 'none' && $('#modalDetail').style.display !== '') ||
+    ($('#modalCreate').style.display !== 'none' && $('#modalCreate').style.display !== '') ||
+    ($('#modalSettings') && $('#modalSettings').style.display !== 'none' && $('#modalSettings').style.display !== '');
+  if (anyModalOpen) {
+    console.log('🛑 モーダル表示中のため自動更新をスキップ');
+    return;
+  }
+  loadCases();
+}, 30000);
+</script>
+</body>
+</html>
